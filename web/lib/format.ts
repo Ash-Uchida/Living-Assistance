@@ -23,3 +23,10 @@ export function formatWhen(iso: string) {
     day: "numeric",
   });
 }
+
+export function formatTime(iso: string) {
+  return new Date(iso).toLocaleTimeString(undefined, {
+    hour: "numeric",
+    minute: "2-digit",
+  });
+}
