@@ -7,6 +7,7 @@ export type RoomStatus =
 export type Room = {
   number: string;
   status: RoomStatus;
+  maintenanceDueAt: string | null;
 };
 
 export type Stay = {
@@ -14,5 +15,6 @@ export type Stay = {
   name: string;
   room: string;
   checkedInAt: string;
+  expectedOutAt: string | null;
   checkedOutAt: string | null;
 };

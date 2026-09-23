@@ -30,3 +30,11 @@ export function formatTime(iso: string) {
     minute: "2-digit",
   });
 }
+
+export function formatDay(iso: string) {
+  return new Date(iso).toLocaleDateString(undefined, {
+    weekday: "short",
+    month: "short",
+    day: "numeric",
+  });
+}

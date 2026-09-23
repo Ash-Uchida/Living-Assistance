@@ -32,6 +32,15 @@ export default function Home() {
             Live status for every room. Click a room for details.
           </div>
         </Link>
+        <Link
+          href="/calendar"
+          className="rounded-2xl bg-white px-5 py-6 ring-1 ring-stone-300 transition hover:bg-stone-50"
+        >
+          <div className="text-lg font-medium">Calendar</div>
+          <div className="mt-1 text-sm text-stone-600">
+            Who is in each room, and maintenance due dates.
+          </div>
+        </Link>
       </div>
     </div>
   );

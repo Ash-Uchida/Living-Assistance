@@ -31,6 +31,9 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
                 <Link href="/board" className="hover:text-stone-900">
                   Room board
                 </Link>
+                <Link href="/calendar" className="hover:text-stone-900">
+                  Calendar
+                </Link>
               </nav>
             </div>
           </header>

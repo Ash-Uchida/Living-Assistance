@@ -2,12 +2,21 @@
 
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { formatWhen, statusClass, statusLabel } from "@/lib/format";
+import { fromDateInput, toDateInput } from "@/lib/dates";
+import { formatDay, formatWhen, statusClass, statusLabel } from "@/lib/format";
 import { useStore } from "@/lib/store";
 
 export default function RoomPage() {
   const { number } = useParams<{ number: string }>();
-  const { rooms, currentStay, checkOut, setRoomStatus, ready } = useStore();
+  const {
+    rooms,
+    currentStay,
+    checkOut,
+    setRoomStatus,
+    setExpectedOut,
+    setMaintenanceDue,
+    ready,
+  } = useStore();
 
   if (!ready) return <p className="text-stone-500">Loading…</p>;
 
@@ -50,10 +59,66 @@ export default function RoomPage() {
           <div className="mt-1 text-sm text-stone-600">
             Since {formatWhen(stay.checkedInAt)}
           </div>
+          <label className="mt-3 block space-y-1 text-sm">
+            <span className="text-stone-500">Expected to leave</span>
+            <input
+              type="date"
+              value={stay.expectedOutAt ? toDateInput(stay.expectedOutAt) : ""}
+              onChange={(e) => {
+                if (e.target.value) {
+                  setExpectedOut(room.number, fromDateInput(e.target.value));
+                }
+              }}
+              className="w-full rounded-xl bg-stone-50 px-3 py-2 ring-1 ring-stone-200 outline-none focus:ring-2 focus:ring-stone-800"
+            />
+          </label>
         </div>
       ) : (
         <p className="text-sm text-stone-600">No one is in this room.</p>
       )}
+
+      {room.maintenanceDueAt || room.status === "maintenance" ? (
+        <div className="rounded-2xl bg-white p-4 ring-1 ring-stone-200">
+          <div className="text-xs uppercase tracking-wide text-stone-500">
+            Maintenance due
+          </div>
+          {room.maintenanceDueAt ? (
+            <div className="mt-1 text-sm text-stone-700">
+              {formatDay(room.maintenanceDueAt)}
+            </div>
+          ) : null}
+          <label className="mt-3 block space-y-1 text-sm">
+            <span className="text-stone-500">Due date</span>
+            <input
+              type="date"
+              value={
+                room.maintenanceDueAt ? toDateInput(room.maintenanceDueAt) : ""
+              }
+              onChange={(e) =>
+                setMaintenanceDue(
+                  room.number,
+                  e.target.value ? fromDateInput(e.target.value) : null,
+                )
+              }
+              className="w-full rounded-xl bg-stone-50 px-3 py-2 ring-1 ring-stone-200 outline-none focus:ring-2 focus:ring-stone-800"
+            />
+          </label>
+        </div>
+      ) : room.status === "available" ? (
+        <label className="block space-y-1 text-sm">
+          <span className="text-stone-500">Schedule maintenance by</span>
+          <input
+            type="date"
+            value=""
+            onChange={(e) => {
+              if (e.target.value) {
+                setMaintenanceDue(room.number, fromDateInput(e.target.value));
+              }
+            }}
+            className="w-full rounded-xl bg-white px-3 py-2 ring-1 ring-stone-300 outline-none focus:ring-2 focus:ring-stone-800"
+          />
+        </label>
+      ) : null}
 
       <div className="flex flex-col gap-2">
         {stay ? (
