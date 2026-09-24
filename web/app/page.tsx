@@ -1,47 +1,79 @@
+"use client";
+
 import Link from "next/link";
+import { MAIN_NAV, roleCanOpen } from "@/lib/seed";
+import { useStore } from "@/lib/store";
+import { TONE_STYLES } from "@/components/ui";
 
 export default function Home() {
+  const store = useStore();
+  const links = MAIN_NAV.filter((link) =>
+    roleCanOpen(store.access, store.role, link.href),
+  );
+  const occupied = store.rooms.filter((r) => r.occupancy === "occupied").length;
+  const dirty = store.rooms.filter((r) => r.occupancy === "needs_cleaning").length;
+  const openOrders = store.orders.filter((o) => o.status !== "served").length;
+
+  const counts: Record<string, string> = {
+    "/rooms": `${occupied} checked in`,
+    "/housekeeping": `${dirty} to clean`,
+    "/dining": `${openOrders} orders`,
+    "/calendar": `${store.events.length} dated`,
+    "/access": "Manager",
+  };
+
   return (
-    <div className="mx-auto max-w-lg space-y-8 pt-6">
+    <div className="mx-auto max-w-2xl space-y-8 pt-2">
       <div className="space-y-2">
-        <h1 className="text-3xl font-semibold tracking-tight">
-          Check in. See the rooms.
+        <p className="text-xs font-semibold uppercase tracking-widest text-teal-700">
+          Homestead Assisted Living
+        </p>
+        <h1 className="text-3xl font-extrabold tracking-tight text-slate-900">
+          What do you need to do?
         </h1>
-        <p className="text-stone-600">
-          A first look for the care center. Residents check themselves in and
-          out. Staff see which rooms are open, occupied, or need cleaning. No
-          medical notes.
+        <p className="text-sm text-slate-600">
+          Open only what your job is allowed to use. Room numbers only — no
+          names.
         </p>
       </div>
+
       <div className="grid gap-3">
-        <Link
-          href="/check-in"
-          className="rounded-2xl bg-stone-900 px-5 py-6 text-white transition hover:bg-stone-800"
-        >
-          <div className="text-lg font-medium">I am checking in or out</div>
-          <div className="mt-1 text-sm text-stone-300">
-            For residents. Name and room only.
-          </div>
-        </Link>
-        <Link
-          href="/board"
-          className="rounded-2xl bg-white px-5 py-6 ring-1 ring-stone-300 transition hover:bg-stone-50"
-        >
-          <div className="text-lg font-medium">Staff room board</div>
-          <div className="mt-1 text-sm text-stone-600">
-            Live status for every room. Click a room for details.
-          </div>
-        </Link>
-        <Link
-          href="/calendar"
-          className="rounded-2xl bg-white px-5 py-6 ring-1 ring-stone-300 transition hover:bg-stone-50"
-        >
-          <div className="text-lg font-medium">Calendar</div>
-          <div className="mt-1 text-sm text-stone-600">
-            Who is in each room, and maintenance due dates.
-          </div>
-        </Link>
+        {links.map((link) => {
+          const tone = TONE_STYLES[link.tone];
+          return (
+            <Link
+              key={link.href}
+              href={link.href}
+              className={`group flex items-center justify-between rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm transition hover:shadow-md ${tone.hover}`}
+            >
+              <div className="flex items-center gap-4">
+                <div
+                  className={`flex h-12 w-12 items-center justify-center rounded-xl text-xl transition-colors ${tone.icon}`}
+                >
+                  <i className={`fas ${link.icon}`} aria-hidden />
+                </div>
+                <div>
+                  <h2 className={`text-lg font-bold text-slate-900 ${tone.title}`}>
+                    {link.label}
+                  </h2>
+                  <p className="text-sm text-slate-500">{link.hint}</p>
+                </div>
+              </div>
+              <span className="rounded-full bg-teal-100 px-2.5 py-1 text-[10px] font-bold text-teal-800">
+                {counts[link.href]}
+              </span>
+            </Link>
+          );
+        })}
       </div>
+
+      <button
+        type="button"
+        onClick={store.reset}
+        className="text-xs font-semibold text-teal-700 hover:text-teal-900"
+      >
+        Reset fake data
+      </button>
     </div>
   );
 }

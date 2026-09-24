@@ -2,13 +2,15 @@ export function pad(n: number) {
   return String(n).padStart(2, "0");
 }
 
-export function dateKey(value: Date | string) {
-  const d = typeof value === "string" ? new Date(value) : value;
+export function dateKey(value: Date | number | string) {
+  const d = typeof value === "number" || typeof value === "string"
+    ? new Date(value)
+    : value;
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 }
 
-export function startOfDay(value: Date | string) {
-  const d = typeof value === "string" ? new Date(value) : new Date(value);
+export function startOfDay(value: Date | number) {
+  const d = new Date(value);
   d.setHours(0, 0, 0, 0);
   return d;
 }
@@ -19,53 +21,41 @@ export function addDays(value: Date, days: number) {
   return d;
 }
 
-export function toDateInput(value: string) {
-  return dateKey(value);
-}
-
-export function fromDateInput(value: string) {
-  const [y, m, d] = value.split("-").map(Number);
-  const date = new Date(y, (m ?? 1) - 1, d ?? 1, 12, 0, 0, 0);
-  return date.toISOString();
-}
-
-export function daysFromNow(days: number, hours = 10) {
-  const d = new Date();
-  d.setDate(d.getDate() + days);
-  d.setHours(hours, 0, 0, 0);
-  return d.toISOString();
-}
-
-export function stayRange(stay: {
-  checkedInAt: string;
-  expectedOutAt: string | null;
-  checkedOutAt: string | null;
-}) {
-  const start = startOfDay(stay.checkedInAt);
-  const endSource = stay.checkedOutAt ?? stay.expectedOutAt;
-  const end = endSource ? startOfDay(endSource) : addDays(start, 7);
-  return { start, end };
-}
-
-export function stayCoversDay(
-  stay: {
-    checkedInAt: string;
-    expectedOutAt: string | null;
-    checkedOutAt: string | null;
-  },
-  day: Date,
-) {
-  const { start, end } = stayRange(stay);
-  const t = startOfDay(day).getTime();
-  return t >= start.getTime() && t < end.getTime();
-}
-
-export function rangesOverlap(aStart: Date, aEnd: Date, bStart: Date, bEnd: Date) {
-  return aStart.getTime() < bEnd.getTime() && bStart.getTime() < aEnd.getTime();
+export function combineDayAndTime(day: Date, time: string) {
+  const [hours, minutes] = time.split(":").map(Number);
+  const next = startOfDay(day);
+  next.setHours(Number.isFinite(hours) ? hours : 12, Number.isFinite(minutes) ? minutes : 0, 0, 0);
+  return next.getTime();
 }
 
 export function monthGrid(year: number, month: number) {
   const first = new Date(year, month, 1);
   const start = addDays(first, -first.getDay());
   return Array.from({ length: 42 }, (_, i) => addDays(start, i));
+}
+
+export function parseDateKey(key: string) {
+  const [year, month, day] = key.split("-").map(Number);
+  return new Date(year, (month ?? 1) - 1, day ?? 1);
+}
+
+export function isDateKey(value: string) {
+  return /^\d{4}-\d{2}-\d{2}$/.test(value);
+}
+
+export function stayLastDay(stay: {
+  endsOn: string;
+  checkedOutAt: number | null;
+}) {
+  if (!stay.checkedOutAt) return stay.endsOn;
+  const out = dateKey(stay.checkedOutAt);
+  return out < stay.endsOn ? out : stay.endsOn;
+}
+
+export function stayCoversDay(
+  stay: { startsOn: string; endsOn: string; checkedOutAt: number | null },
+  day: Date | string,
+) {
+  const key = typeof day === "string" && isDateKey(day) ? day : dateKey(day);
+  return key >= stay.startsOn && key <= stayLastDay(stay);
 }

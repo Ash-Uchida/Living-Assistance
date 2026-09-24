@@ -1,385 +1,279 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import Link from "next/link";
+import { FormEvent, useMemo, useState } from "react";
 import {
-  addDays,
+  combineDayAndTime,
   dateKey,
-  fromDateInput,
   monthGrid,
   startOfDay,
   stayCoversDay,
-  stayRange,
-  rangesOverlap,
 } from "@/lib/dates";
-import { formatDay } from "@/lib/format";
+import { EVENT_KIND_LABEL, formatDay, formatStayRange, formatTime } from "@/lib/format";
 import { useStore } from "@/lib/store";
+import type { EventKind } from "@/lib/types";
+import {
+  Card,
+  Field,
+  GhostButton,
+  PageTitle,
+  PrimaryButton,
+  inputClass,
+} from "@/components/ui";
 
-const weekdays = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-
-type Mode = "stay" | "maint";
+const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
 export default function CalendarPage() {
-  const { rooms, stays, ready, scheduleStay, setMaintenanceDue } = useStore();
+  const store = useStore();
   const today = startOfDay(new Date());
   const [cursor, setCursor] = useState(
     () => new Date(today.getFullYear(), today.getMonth(), 1),
   );
-  const [showStay, setShowStay] = useState(true);
-  const [showMaint, setShowMaint] = useState(true);
-  const [picked, setPicked] = useState<Date | null>(null);
-  const [mode, setMode] = useState<Mode>("stay");
-  const [name, setName] = useState("");
-  const [room, setRoom] = useState("");
-  const [leaveOn, setLeaveOn] = useState("");
+  const [picked, setPicked] = useState<Date>(() => today);
+  const [title, setTitle] = useState("");
+  const [kind, setKind] = useState<EventKind>("activity");
+  const [time, setTime] = useState("10:00");
+  const [roomNumber, setRoomNumber] = useState("");
   const [error, setError] = useState<string | null>(null);
 
   const days = useMemo(
     () => monthGrid(cursor.getFullYear(), cursor.getMonth()),
     [cursor],
   );
+  const pickedKey = dateKey(picked);
+  const dayEvents = store.events
+    .filter((event) => dateKey(event.startsAt) === pickedKey)
+    .sort((a, b) => a.startsAt - b.startsAt);
+  const dayStays = store.stays.filter((stay) => stayCoversDay(stay, pickedKey));
 
-  const openStays = stays.filter((s) => !s.checkedOutAt);
-
-  const freeRooms = useMemo(() => {
-    if (!picked) return rooms;
-    const start = startOfDay(picked);
-    const end = leaveOn ? startOfDay(fromDateInput(leaveOn)) : addDays(start, 7);
-    return rooms.filter((r) => {
-      if (r.status === "maintenance" && start.getTime() <= today.getTime()) {
-        return false;
-      }
-      return !openStays.some((s) => {
-        if (s.room !== r.number) return false;
-        const range = stayRange(s);
-        return rangesOverlap(start, end, range.start, range.end);
-      });
+  function addOnDay(event: FormEvent) {
+    event.preventDefault();
+    const result = store.addEvent({
+      title,
+      kind,
+      startsAt: combineDayAndTime(picked, time),
+      roomNumber: roomNumber || null,
     });
-  }, [picked, leaveOn, rooms, openStays, today]);
-
-  function openDay(day: Date) {
-    setPicked(day);
-    setMode("stay");
-    setName("");
-    setRoom("");
-    setLeaveOn(dateKey(addDays(day, 7)));
+    if (result) {
+      setError(result);
+      return;
+    }
+    setTitle("");
+    setRoomNumber("");
     setError(null);
   }
 
-  function onAddStay(e: React.FormEvent) {
-    e.preventDefault();
-    if (!picked) return;
-    const message = scheduleStay(
-      name,
-      room,
-      fromDateInput(dateKey(picked)),
-      fromDateInput(leaveOn),
-    );
-    if (message) {
-      setError(message);
-      return;
-    }
-    setPicked(null);
-  }
-
-  function onAddMaint(e: React.FormEvent) {
-    e.preventDefault();
-    if (!picked || !room) {
-      setError("Choose a room.");
-      return;
-    }
-    const message = setMaintenanceDue(room, fromDateInput(dateKey(picked)));
-    if (message) {
-      setError(message);
-      return;
-    }
-    setPicked(null);
-  }
-
-  if (!ready) return <p className="text-stone-500">Loading…</p>;
-
-  const title = cursor.toLocaleDateString(undefined, {
+  const monthTitle = cursor.toLocaleDateString(undefined, {
     month: "long",
     year: "numeric",
   });
 
   return (
-    <div className="space-y-4">
+    <div className="mx-auto max-w-5xl space-y-5">
       <div className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Calendar</h1>
-          <p className="text-sm text-stone-600">
-            Click a day to add someone or a maintenance request. Click a chip
-            to open that room.
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          <button
+        <PageTitle
+          icon="fa-calendar-days"
+          title="Calendar"
+          note="Click a day to see what is happening. Add an activity or a maintenance job. No resident names."
+        />
+        <div className="mb-5 flex items-center gap-2">
+          <GhostButton
             type="button"
             onClick={() =>
               setCursor(new Date(cursor.getFullYear(), cursor.getMonth() - 1, 1))
             }
-            className="rounded-lg bg-white px-2.5 py-1 text-sm ring-1 ring-stone-300 hover:bg-stone-50"
           >
             ←
-          </button>
-          <div className="min-w-36 text-center text-sm font-medium">{title}</div>
-          <button
+          </GhostButton>
+          <p className="min-w-36 text-center text-sm font-bold text-slate-900">
+            {monthTitle}
+          </p>
+          <GhostButton
             type="button"
             onClick={() =>
               setCursor(new Date(cursor.getFullYear(), cursor.getMonth() + 1, 1))
             }
-            className="rounded-lg bg-white px-2.5 py-1 text-sm ring-1 ring-stone-300 hover:bg-stone-50"
           >
             →
-          </button>
+          </GhostButton>
         </div>
       </div>
 
-      <div className="flex flex-wrap gap-2 text-xs">
-        <button
-          type="button"
-          onClick={() => setShowStay((v) => !v)}
-          className={`rounded-full px-2.5 py-1 ring-1 ${
-            showStay
-              ? "bg-sky-50 text-sky-800 ring-sky-200"
-              : "bg-white text-stone-500 ring-stone-300"
-          }`}
-        >
-          Occupancy
-        </button>
-        <button
-          type="button"
-          onClick={() => setShowMaint((v) => !v)}
-          className={`rounded-full px-2.5 py-1 ring-1 ${
-            showMaint
-              ? "bg-stone-100 text-stone-700 ring-stone-300"
-              : "bg-white text-stone-500 ring-stone-300"
-          }`}
-        >
-          Maintenance due
-        </button>
-      </div>
-
-      {picked ? (
-        <div className="rounded-2xl bg-white p-4 ring-1 ring-stone-200">
-          <div className="flex flex-wrap items-start justify-between gap-3">
-            <div>
-              <div className="text-xs uppercase tracking-wide text-stone-500">
-                Add on
-              </div>
-              <div className="text-lg font-medium">
-                {formatDay(picked.toISOString())}
-              </div>
-            </div>
+      <div className="grid gap-1 sm:grid-cols-7">
+        {WEEKDAYS.map((day) => (
+          <p
+            key={day}
+            className="hidden text-center text-[10px] font-bold uppercase tracking-wide text-slate-400 sm:block"
+          >
+            {day}
+          </p>
+        ))}
+        {days.map((day) => {
+          const key = dateKey(day);
+          const inMonth = day.getMonth() === cursor.getMonth();
+          const isToday = key === dateKey(today);
+          const isPicked = key === pickedKey;
+          const events = store.events.filter(
+            (item) => dateKey(item.startsAt) === key,
+          );
+          const roomsStaying = store.stays.filter((stay) =>
+            stayCoversDay(stay, key),
+          ).length;
+          return (
             <button
-              type="button"
-              onClick={() => setPicked(null)}
-              className="text-sm text-stone-500 underline-offset-2 hover:underline"
-            >
-              Cancel
-            </button>
-          </div>
-          <div className="mt-3 flex gap-2">
-            <button
+              key={key}
               type="button"
               onClick={() => {
-                setMode("stay");
+                setPicked(day);
                 setError(null);
-                setRoom("");
               }}
-              className={`rounded-full px-3 py-1 text-sm ring-1 ${
-                mode === "stay"
-                  ? "bg-stone-900 text-white ring-stone-900"
-                  : "bg-white text-stone-600 ring-stone-300"
-              }`}
+              className={`min-h-24 rounded-xl border p-2 text-left ${
+                isPicked
+                  ? "border-teal-600 bg-teal-50 ring-2 ring-teal-200"
+                  : isToday
+                    ? "border-teal-200 bg-white"
+                    : "border-slate-200 bg-white"
+              } ${inMonth ? "" : "opacity-40"}`}
             >
-              Someone in a room
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                setMode("maint");
-                setError(null);
-                setRoom("");
-              }}
-              className={`rounded-full px-3 py-1 text-sm ring-1 ${
-                mode === "maint"
-                  ? "bg-stone-900 text-white ring-stone-900"
-                  : "bg-white text-stone-600 ring-stone-300"
-              }`}
-            >
-              Maintenance request
-            </button>
-          </div>
-
-          {mode === "stay" ? (
-            <form onSubmit={onAddStay} className="mt-4 grid gap-3 sm:grid-cols-3">
-              <label className="block space-y-1 text-sm">
-                <span className="text-stone-600">Name</span>
-                <input
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  className="w-full rounded-xl bg-stone-50 px-3 py-2 ring-1 ring-stone-200 outline-none focus:ring-2 focus:ring-stone-800"
-                  required
-                />
-              </label>
-              <label className="block space-y-1 text-sm">
-                <span className="text-stone-600">Room</span>
-                <select
-                  value={room}
-                  onChange={(e) => setRoom(e.target.value)}
-                  className="w-full rounded-xl bg-stone-50 px-3 py-2 ring-1 ring-stone-200 outline-none focus:ring-2 focus:ring-stone-800"
-                  required
-                >
-                  <option value="">Open rooms those days</option>
-                  {freeRooms.map((r) => (
-                    <option key={r.number} value={r.number}>
-                      {r.number}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label className="block space-y-1 text-sm">
-                <span className="text-stone-600">Leave on</span>
-                <input
-                  type="date"
-                  value={leaveOn}
-                  onChange={(e) => setLeaveOn(e.target.value)}
-                  className="w-full rounded-xl bg-stone-50 px-3 py-2 ring-1 ring-stone-200 outline-none focus:ring-2 focus:ring-stone-800"
-                  required
-                />
-              </label>
-              <button
-                type="submit"
-                className="rounded-xl bg-stone-900 py-2 text-sm font-medium text-white hover:bg-stone-800 sm:col-span-3"
-              >
-                Add stay
-              </button>
-            </form>
-          ) : (
-            <form onSubmit={onAddMaint} className="mt-4 grid gap-3 sm:grid-cols-2">
-              <label className="block space-y-1 text-sm sm:col-span-2">
-                <span className="text-stone-600">Room</span>
-                <select
-                  value={room}
-                  onChange={(e) => setRoom(e.target.value)}
-                  className="w-full rounded-xl bg-stone-50 px-3 py-2 ring-1 ring-stone-200 outline-none focus:ring-2 focus:ring-stone-800"
-                  required
-                >
-                  <option value="">Choose a room</option>
-                  {rooms.map((r) => (
-                    <option key={r.number} value={r.number}>
-                      {r.number}
-                      {r.status === "occupied" ? " (occupied)" : ""}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <button
-                type="submit"
-                className="rounded-xl bg-stone-900 py-2 text-sm font-medium text-white hover:bg-stone-800 sm:col-span-2"
-              >
-                Add maintenance due this day
-              </button>
-            </form>
-          )}
-          {error ? <p className="mt-3 text-sm text-red-700">{error}</p> : null}
-        </div>
-      ) : null}
-
-      <div className="overflow-hidden rounded-2xl bg-white ring-1 ring-stone-200">
-        <div className="grid grid-cols-7 border-b border-stone-100 bg-stone-50 text-center text-xs uppercase tracking-wide text-stone-500">
-          {weekdays.map((d) => (
-            <div key={d} className="px-1 py-2">
-              {d}
-            </div>
-          ))}
-        </div>
-        <div className="grid grid-cols-7">
-          {days.map((day) => {
-            const key = dateKey(day);
-            const inMonth = day.getMonth() === cursor.getMonth();
-            const isToday = key === dateKey(today);
-            const selected = picked ? dateKey(picked) === key : false;
-            const occupying = showStay
-              ? openStays.filter((s) => stayCoversDay(s, day))
-              : [];
-            const due = showMaint
-              ? rooms.filter(
-                  (r) =>
-                    r.maintenanceDueAt && dateKey(r.maintenanceDueAt) === key,
-                )
-              : [];
-
-            return (
-              <div
-                key={key}
-                role="button"
-                tabIndex={0}
-                onClick={() => openDay(day)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" || e.key === " ") {
-                    e.preventDefault();
-                    openDay(day);
-                  }
-                }}
-                className={`flex min-h-28 cursor-pointer flex-col border-t border-r border-stone-100 p-1.5 ${
-                  selected
-                    ? "bg-amber-50"
-                    : inMonth
-                      ? "bg-white hover:bg-stone-50"
-                      : "bg-stone-50/70 hover:bg-stone-100/80"
-                }`}
-              >
-                <div
-                  className={`mb-1 text-xs ${
-                    isToday
-                      ? "font-medium text-stone-900"
-                      : inMonth
-                        ? "text-stone-700"
-                        : "text-stone-400"
-                  }`}
-                >
-                  <span
-                    className={
-                      isToday
-                        ? "inline-flex h-5 w-5 items-center justify-center rounded-full bg-stone-900 text-white"
-                        : ""
-                    }
+              <span className="text-xs font-bold text-slate-700">
+                {day.getDate()}
+              </span>
+              <ul className="mt-1 space-y-0.5">
+                {events.slice(0, 2).map((item) => (
+                  <li
+                    key={item.id}
+                    className={`truncate rounded px-1 py-0.5 text-[10px] font-semibold ${
+                      item.kind === "maintenance"
+                        ? "bg-amber-100 text-amber-900"
+                        : "bg-sky-100 text-sky-900"
+                    }`}
                   >
-                    {day.getDate()}
-                  </span>
-                </div>
-                <div className="space-y-1">
-                  {occupying.map((s) => (
-                    <Link
-                      key={s.id}
-                      href={`/rooms/${s.room}`}
-                      onClick={(e) => e.stopPropagation()}
-                      className="block truncate rounded-md bg-sky-50 px-1.5 py-0.5 text-[11px] text-sky-900 ring-1 ring-sky-100 hover:bg-sky-100"
-                      title={`${s.name} · Room ${s.room}`}
-                    >
-                      {s.room} {s.name}
-                    </Link>
-                  ))}
-                  {due.map((r) => (
-                    <Link
-                      key={r.number}
-                      href={`/rooms/${r.number}`}
-                      onClick={(e) => e.stopPropagation()}
-                      className="block truncate rounded-md bg-stone-100 px-1.5 py-0.5 text-[11px] text-stone-800 ring-1 ring-stone-200 hover:bg-stone-200"
-                      title={`Room ${r.number} maintenance due`}
-                    >
-                      {r.number} maint. due
-                    </Link>
-                  ))}
-                </div>
-              </div>
-            );
-          })}
-        </div>
+                    {item.title}
+                  </li>
+                ))}
+                {events.length > 2 ? (
+                  <li className="text-[10px] text-slate-500">
+                    +{events.length - 2} more
+                  </li>
+                ) : null}
+                {roomsStaying > 0 ? (
+                  <li className="text-[10px] text-slate-500">
+                    {roomsStaying} {roomsStaying === 1 ? "stay" : "stays"}
+                  </li>
+                ) : null}
+              </ul>
+            </button>
+          );
+        })}
       </div>
+
+      <Card className="space-y-4">
+        <div>
+          <h2 className="text-sm font-bold text-slate-900">
+            {formatDay(picked)}
+          </h2>
+          <p className="text-xs text-slate-500">
+            What is on this day. Room numbers only.
+          </p>
+        </div>
+
+        {dayEvents.length === 0 && dayStays.length === 0 ? (
+          <p className="text-sm text-slate-600">Nothing on this day yet.</p>
+        ) : (
+          <ul className="space-y-2">
+            {dayEvents.map((item) => (
+              <li
+                key={item.id}
+                className="flex items-start justify-between gap-3 rounded-xl bg-slate-50 px-3 py-3"
+              >
+                <div>
+                  <p className="text-sm font-semibold text-slate-900">
+                    {item.title}
+                  </p>
+                  <p className="text-xs text-slate-500">
+                    {EVENT_KIND_LABEL[item.kind]} · {formatTime(item.startsAt)}
+                    {item.roomNumber ? ` · Room ${item.roomNumber}` : ""}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setError(store.removeEvent(item.id))}
+                  className="text-xs font-semibold text-rose-700"
+                >
+                  Remove
+                </button>
+              </li>
+            ))}
+            {dayStays.map((stay) => (
+              <li
+                key={stay.id}
+                className="rounded-xl border border-slate-200 px-3 py-3 text-sm text-slate-700"
+              >
+                Room {stay.roomNumber} · {formatStayRange(stay.startsOn, stay.endsOn)}
+                {dateKey(stay.checkedInAt) === pickedKey
+                  ? ` · in at ${formatTime(stay.checkedInAt)}`
+                  : ""}
+                {stay.checkedOutAt && dateKey(stay.checkedOutAt) === pickedKey
+                  ? ` · out at ${formatTime(stay.checkedOutAt)}`
+                  : ""}
+              </li>
+            ))}
+          </ul>
+        )}
+
+        <form
+          onSubmit={addOnDay}
+          className="grid gap-3 border-t border-slate-100 pt-4 sm:grid-cols-2"
+        >
+          <Field label="What is happening">
+            <input
+              className={inputClass}
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              placeholder="Bingo — no names"
+              required
+            />
+          </Field>
+          <Field label="Kind">
+            <select
+              className={inputClass}
+              value={kind}
+              onChange={(e) => setKind(e.target.value as EventKind)}
+            >
+              <option value="activity">Activity</option>
+              <option value="maintenance">Maintenance</option>
+            </select>
+          </Field>
+          <Field label="Time">
+            <input
+              className={inputClass}
+              type="time"
+              value={time}
+              onChange={(e) => setTime(e.target.value)}
+              required
+            />
+          </Field>
+          <Field label="Room (optional)">
+            <select
+              className={inputClass}
+              value={roomNumber}
+              onChange={(e) => setRoomNumber(e.target.value)}
+            >
+              <option value="">No room</option>
+              {store.rooms.map((room) => (
+                <option key={room.number} value={room.number}>
+                  {room.number}
+                </option>
+              ))}
+            </select>
+          </Field>
+          {error ? (
+            <p className="text-sm text-rose-700 sm:col-span-2">{error}</p>
+          ) : null}
+          <PrimaryButton type="submit" className="sm:col-span-2">
+            Add to {formatDay(picked)}
+          </PrimaryButton>
+        </form>
+      </Card>
     </div>
   );
 }
