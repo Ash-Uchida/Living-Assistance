@@ -1,0 +1,1237 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full bg-slate-50">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>CarePulse - Assisted Living Caregiver Portal</title>
+    
+    <!-- Google Fonts: Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                    colors: {
+                        teal: {
+                            50: '#f0fdfa',
+                            100: '#ccfbf1',
+                            500: '#14b8a6',
+                            600: '#0d9488',
+                            700: '#0f766e',
+                            800: '#115e59',
+                            900: '#134e4a',
+                        },
+                        slate: {
+                            850: '#1e293b',
+                            900: '#0f172a',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <!-- Font Awesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Alpine.js for Reactive State Management -->
+    <script src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
+
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            -webkit-tap-highlight-color: transparent;
+        }
+        /* Custom scrollbar for touch-friendly scrolling */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f5f9;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 9999px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+        .pulse-emerald {
+            box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7);
+            animation: pulse-green 2s infinite;
+        }
+        @keyframes pulse-green {
+            0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); }
+            70% { transform: scale(1); box-shadow: 0 0 0 8px rgba(16, 185, 129, 0); }
+            100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+        }
+    </style>
+</head>
+<body class="h-full bg-slate-50 text-slate-800 antialiased pb-28 md:pb-12" x-data="appData()" x-init="initApp()">
+
+    <!-- Global Notification Toast -->
+    <div x-show="toast.visible" 
+         x-transition:enter="transition ease-out duration-300"
+         x-transition:enter-start="opacity-0 translate-y-2"
+         x-transition:enter-end="opacity-100 translate-y-0"
+         x-transition:leave="transition ease-in duration-200"
+         x-transition:leave-start="opacity-100 translate-y-0"
+         x-transition:leave-end="opacity-0 translate-y-2"
+         class="fixed top-4 right-4 left-4 sm:left-auto sm:w-96 z-50 p-4 rounded-2xl shadow-xl flex items-center space-x-3 border"
+         :class="{
+            'bg-emerald-800 text-white border-emerald-700': toast.type === 'success',
+            'bg-rose-800 text-white border-rose-700': toast.type === 'danger',
+            'bg-amber-800 text-white border-amber-700': toast.type === 'warning',
+            'bg-slate-900 text-white border-slate-700': toast.type === 'info'
+         }"
+         style="display: none;">
+        <i class="fas text-xl" :class="{
+            'fa-check-circle text-emerald-300': toast.type === 'success',
+            'fa-exclamation-triangle text-rose-300': toast.type === 'danger',
+            'fa-bell text-amber-300': toast.type === 'warning',
+            'fa-info-circle text-sky-300': toast.type === 'info'
+        }"></i>
+        <div class="flex-1">
+            <p class="font-semibold text-sm" x-text="toast.title"></p>
+            <p class="text-xs opacity-90" x-text="toast.message"></p>
+        </div>
+        <button @click="toast.visible = false" class="text-white/70 hover:text-white p-1">
+            <i class="fas fa-times"></i>
+        </button>
+    </div>
+
+    <!-- Top Navigation Header -->
+    <header class="sticky top-0 z-30 bg-teal-800 text-white shadow-md border-b border-teal-700">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-16">
+                
+                <!-- Facility Brand / Logo -->
+                <div class="flex items-center space-x-3">
+                    <div class="w-10 h-10 rounded-xl bg-teal-600 flex items-center justify-center text-white shadow-inner border border-teal-400/30">
+                        <i class="fas fa-heart-pulse text-lg"></i>
+                    </div>
+                    <div>
+                        <span class="text-xs uppercase tracking-widest font-semibold text-teal-200 block leading-none">Serenity Pines</span>
+                        <span class="text-lg font-bold tracking-tight text-white leading-tight">CarePulse Assistant</span>
+                    </div>
+                </div>
+
+                <!-- Clock & Worker Status Switcher -->
+                <div class="flex items-center space-x-3">
+                    <!-- Live Time Display -->
+                    <div class="hidden sm:flex flex-col text-right mr-2 border-r border-teal-700 pr-4">
+                        <span class="text-xs font-medium text-teal-200" x-text="currentDateStr"></span>
+                        <span class="text-sm font-bold tracking-wide font-mono text-white" x-text="currentTimeStr"></span>
+                    </div>
+
+                    <!-- Shift Status Badge Button -->
+                    <button @click="activeModal = 'shiftStatus'" class="flex items-center space-x-2 bg-teal-900/80 hover:bg-teal-950 text-teal-100 px-3 py-1.5 rounded-full border border-teal-600/50 transition-all text-xs font-medium">
+                        <span class="w-2.5 h-2.5 rounded-full" :class="shiftStatus === 'On Duty' ? 'bg-emerald-400 pulse-emerald' : 'bg-amber-400'"></span>
+                        <span x-text="shiftStatus"></span>
+                        <i class="fas fa-chevron-down text-2xs text-teal-300"></i>
+                    </button>
+
+                    <!-- Notifications Icon -->
+                    <button @click="showUnreadToast()" class="relative p-2 rounded-full hover:bg-teal-700/80 text-teal-100 focus:outline-none transition">
+                        <i class="fas fa-bell text-lg"></i>
+                        <span class="absolute top-1 right-1 w-2.5 h-2.5 bg-rose-500 rounded-full ring-2 ring-teal-800"></span>
+                    </button>
+
+                    <!-- User Profile Avatar -->
+                    <div class="flex items-center space-x-2 pl-2 border-l border-teal-700">
+                        <img class="w-9 h-9 rounded-full object-cover ring-2 ring-teal-400/50" src="https://images.unsplash.com/photo-1594824813566-7885a3961c01?auto=format&fit=crop&q=80&w=150" alt="Elena Rostova">
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content Container -->
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+
+        <!-- Personalized Welcome & Shift Card -->
+        <div class="bg-gradient-to-r from-teal-800 via-teal-700 to-slate-800 rounded-3xl p-6 sm:p-8 text-white shadow-lg relative overflow-hidden">
+            <!-- Background Decorative SVGs -->
+            <div class="absolute -right-8 -bottom-12 opacity-10 text-white pointer-events-none">
+                <i class="fas fa-user-nurse text-[220px]"></i>
+            </div>
+            
+            <div class="relative z-10 grid grid-cols-1 md:grid-cols-12 gap-6 items-center">
+                
+                <!-- Welcome Info -->
+                <div class="md:col-span-7 space-y-3">
+                    <div class="flex flex-wrap items-center gap-2">
+                        <span class="bg-teal-900/80 text-teal-200 text-xs font-semibold px-3 py-1 rounded-full border border-teal-500/30">
+                            <i class="fas fa-sun text-amber-300 mr-1.5"></i> Morning Shift
+                        </span>
+                        <span class="bg-emerald-900/80 text-emerald-200 text-xs font-semibold px-3 py-1 rounded-full border border-emerald-500/30">
+                            <i class="fas fa-shield-alt mr-1.5"></i> On Duty - Memory Care Wing B
+                        </span>
+                    </div>
+
+                    <h1 class="text-2xl sm:text-3xl font-extrabold tracking-tight">
+                        Welcome back, <span class="text-teal-200">Elena!</span> 👋
+                    </h1>
+                    
+                    <p class="text-teal-100/90 text-sm max-w-xl leading-relaxed">
+                        You have <span class="font-bold text-white">12 assigned residents</span> today in Memory Care Wing B. All vital sign sensors are connected and morning care logs are ready.
+                    </p>
+
+                    <!-- Date & Time Mobile Bar -->
+                    <div class="flex sm:hidden items-center space-x-3 pt-2 text-xs text-teal-200 border-t border-teal-600/50">
+                        <span><i class="far fa-calendar-alt mr-1"></i> <span x-text="currentDateStr"></span></span>
+                        <span><i class="far fa-clock mr-1"></i> <span x-text="currentTimeStr"></span></span>
+                    </div>
+                </div>
+
+                <!-- Shift Metrics Widget -->
+                <div class="md:col-span-5 bg-white/10 backdrop-blur-md rounded-2xl p-4 border border-white/15 space-y-3">
+                    <div class="flex justify-between items-center text-xs font-medium text-teal-100">
+                        <span>Shift Progress (7:00 AM - 3:30 PM)</span>
+                        <span class="font-mono text-white font-bold" x-text="shiftProgressPercent + '%'"></span>
+                    </div>
+
+                    <!-- Progress Bar -->
+                    <div class="w-full bg-teal-950/60 rounded-full h-3 overflow-hidden p-0.5 border border-teal-600/40">
+                        <div class="bg-gradient-to-r from-emerald-400 to-teal-300 h-full rounded-full transition-all duration-500" :style="'width: ' + shiftProgressPercent + '%'"></div>
+                    </div>
+
+                    <div class="grid grid-cols-3 gap-2 text-center pt-1">
+                        <div class="bg-teal-900/40 rounded-xl p-2 border border-white/5">
+                            <p class="text-xs text-teal-200">Remaining</p>
+                            <p class="text-sm font-bold text-white font-mono">4h 45m</p>
+                        </div>
+                        <div class="bg-teal-900/40 rounded-xl p-2 border border-white/5">
+                            <p class="text-xs text-teal-200">Tasks Due</p>
+                            <p class="text-sm font-bold text-amber-300 font-mono" x-text="pendingTaskCount"></p>
+                        </div>
+                        <div class="bg-teal-900/40 rounded-xl p-2 border border-white/5">
+                            <p class="text-xs text-teal-200">Wing Team</p>
+                            <p class="text-sm font-bold text-teal-100 font-mono">3 Caregivers</p>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+        <!-- Quick Work Area Access Launch Hub -->
+        <section class="space-y-3">
+            <div class="flex items-center justify-between">
+                <div>
+                    <h2 class="text-lg font-bold text-slate-900 flex items-center gap-2">
+                        <i class="fas fa-th-large text-teal-600"></i> Work Area Quick Access
+                    </h2>
+                    <p class="text-xs text-slate-500">Instant access to shift modules & patient logs</p>
+                </div>
+                <button @click="openRosterModal()" class="text-xs font-semibold text-teal-700 hover:text-teal-900 flex items-center gap-1">
+                    View Wing Map <i class="fas fa-arrow-right text-2xs"></i>
+                </button>
+            </div>
+
+            <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 sm:gap-4">
+                
+                <!-- Card 1: Wing Roster -->
+                <div @click="openRosterModal()" class="group cursor-pointer bg-white rounded-2xl p-4 shadow-sm hover:shadow-md border border-slate-200/80 hover:border-teal-500/50 transition-all duration-200 flex flex-col justify-between">
+                    <div class="flex justify-between items-start mb-3">
+                        <div class="w-10 h-10 rounded-xl bg-teal-50 text-teal-700 group-hover:bg-teal-600 group-hover:text-white transition-colors flex items-center justify-center text-lg">
+                            <i class="fas fa-building-user"></i>
+                        </div>
+                        <span class="bg-teal-100 text-teal-800 text-2xs font-bold px-2 py-0.5 rounded-full">12 Active</span>
+                    </div>
+                    <div>
+                        <h3 class="text-xs font-bold text-slate-800 group-hover:text-teal-700 transition">Assigned Wing</h3>
+                        <p class="text-2xs text-slate-500 mt-0.5">Memory Care B</p>
+                    </div>
+                </div>
+
+                <!-- Card 2: Medication Management -->
+                <div @click="openMedPassModal()" class="group cursor-pointer bg-white rounded-2xl p-4 shadow-sm hover:shadow-md border border-slate-200/80 hover:border-sky-500/50 transition-all duration-200 flex flex-col justify-between">
+                    <div class="flex justify-between items-start mb-3">
+                        <div class="w-10 h-10 rounded-xl bg-sky-50 text-sky-600 group-hover:bg-sky-600 group-hover:text-white transition-colors flex items-center justify-center text-lg">
+                            <i class="fas fa-pills"></i>
+                        </div>
+                        <span class="bg-amber-100 text-amber-800 text-2xs font-bold px-2 py-0.5 rounded-full">8/12 Given</span>
+                    </div>
+                    <div>
+                        <h3 class="text-xs font-bold text-slate-800 group-hover:text-sky-700 transition">Med Pass</h3>
+                        <p class="text-2xs text-slate-500 mt-0.5">Next: 09:00 AM</p>
+                    </div>
+                </div>
+
+                <!-- Card 3: Vital Signs -->
+                <div @click="openVitalsModal()" class="group cursor-pointer bg-white rounded-2xl p-4 shadow-sm hover:shadow-md border border-slate-200/80 hover:border-rose-500/50 transition-all duration-200 flex flex-col justify-between">
+                    <div class="flex justify-between items-start mb-3">
+                        <div class="w-10 h-10 rounded-xl bg-rose-50 text-rose-600 group-hover:bg-rose-600 group-hover:text-white transition-colors flex items-center justify-center text-lg">
+                            <i class="fas fa-heart-pulse"></i>
+                        </div>
+                        <span class="bg-rose-100 text-rose-800 text-2xs font-bold px-2 py-0.5 rounded-full">4 Pending</span>
+                    </div>
+                    <div>
+                        <h3 class="text-xs font-bold text-slate-800 group-hover:text-rose-700 transition">Vital Signs</h3>
+                        <p class="text-2xs text-slate-500 mt-0.5">BP, Temp, O2</p>
+                    </div>
+                </div>
+
+                <!-- Card 4: Resident Care Plans & Logs -->
+                <div @click="openCarePlansModal()" class="group cursor-pointer bg-white rounded-2xl p-4 shadow-sm hover:shadow-md border border-slate-200/80 hover:border-indigo-500/50 transition-all duration-200 flex flex-col justify-between">
+                    <div class="flex justify-between items-start mb-3">
+                        <div class="w-10 h-10 rounded-xl bg-indigo-50 text-indigo-600 group-hover:bg-indigo-600 group-hover:text-white transition-colors flex items-center justify-center text-lg">
+                            <i class="fas fa-clipboard-user"></i>
+                        </div>
+                        <span class="bg-indigo-100 text-indigo-800 text-2xs font-bold px-2 py-0.5 rounded-full">2 Updated</span>
+                    </div>
+                    <div>
+                        <h3 class="text-xs font-bold text-slate-800 group-hover:text-indigo-700 transition">Care Plans</h3>
+                        <p class="text-2xs text-slate-500 mt-0.5">Diet & Assistance</p>
+                    </div>
+                </div>
+
+                <!-- Card 5: Activities & Dining -->
+                <div @click="openScheduleModal()" class="group cursor-pointer bg-white rounded-2xl p-4 shadow-sm hover:shadow-md border border-slate-200/80 hover:border-emerald-500/50 transition-all duration-200 flex flex-col justify-between">
+                    <div class="flex justify-between items-start mb-3">
+                        <div class="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 group-hover:bg-emerald-600 group-hover:text-white transition-colors flex items-center justify-center text-lg">
+                            <i class="fas fa-utensils"></i>
+                        </div>
+                        <span class="bg-emerald-100 text-emerald-800 text-2xs font-bold px-2 py-0.5 rounded-full">Lunch 12:00</span>
+                    </div>
+                    <div>
+                        <h3 class="text-xs font-bold text-slate-800 group-hover:text-emerald-700 transition">Activities & Meals</h3>
+                        <p class="text-2xs text-slate-500 mt-0.5">Dining Schedule</p>
+                    </div>
+                </div>
+
+                <!-- Card 6: Shift Handover -->
+                <div @click="activeModal = 'handOff'" class="group cursor-pointer bg-white rounded-2xl p-4 shadow-sm hover:shadow-md border border-slate-200/80 hover:border-amber-500/50 transition-all duration-200 flex flex-col justify-between">
+                    <div class="flex justify-between items-start mb-3">
+                        <div class="w-10 h-10 rounded-xl bg-amber-50 text-amber-600 group-hover:bg-amber-600 group-hover:text-white transition-colors flex items-center justify-center text-lg">
+                            <i class="fas fa-comments text-lg"></i>
+                        </div>
+                        <span class="bg-amber-100 text-amber-800 text-2xs font-bold px-2 py-0.5 rounded-full">Shift Notes</span>
+                    </div>
+                    <div>
+                        <h3 class="text-xs font-bold text-slate-800 group-hover:text-amber-700 transition">Shift Handoff</h3>
+                        <p class="text-2xs text-slate-500 mt-0.5">Broadcaster Tool</p>
+                    </div>
+                </div>
+
+            </div>
+        </section>
+
+        <!-- Priority Alerts & Updates Hub -->
+        <section class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+            
+            <!-- Left Column: Updates & News Feed (8 cols on lg) -->
+            <div class="lg:col-span-8 space-y-4">
+                
+                <!-- Urgent Top Alert Banner -->
+                <div x-show="showHighPriorityBanner" class="bg-rose-50 border-l-4 border-rose-600 rounded-2xl p-4 shadow-sm flex items-start justify-between space-x-3">
+                    <div class="flex items-start space-x-3">
+                        <div class="text-rose-600 text-lg mt-0.5">
+                            <i class="fas fa-exclamation-triangle"></i>
+                        </div>
+                        <div>
+                            <div class="flex items-center gap-2">
+                                <span class="bg-rose-600 text-white text-2xs font-extrabold uppercase px-2 py-0.5 rounded">High Priority</span>
+                                <span class="text-xs font-bold text-rose-900">Room 104 - Resident Johnson</span>
+                            </div>
+                            <p class="text-xs text-rose-800 mt-1 leading-relaxed">
+                                Care plan updated at 07:15 AM today: High Fall Risk Protocol activated. Requires 2-person assist for transfers.
+                            </p>
+                        </div>
+                    </div>
+                    <button @click="showHighPriorityBanner = false" class="text-rose-400 hover:text-rose-700 text-sm p-1">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+
+                <!-- Updates Container Card -->
+                <div class="bg-white rounded-3xl p-5 sm:p-6 shadow-sm border border-slate-200/80 space-y-4">
+                    
+                    <!-- Header & Category Filter Tabs -->
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100">
+                        <div>
+                            <h2 class="text-lg font-bold text-slate-900 flex items-center gap-2">
+                                <i class="fas fa-newspaper text-teal-600"></i> Daily News & Urgent Updates
+                            </h2>
+                            <p class="text-xs text-slate-500">Stay up to date with facility operations & clinical alerts</p>
+                        </div>
+
+                        <!-- Filter Tabs -->
+                        <div class="flex items-center gap-1 bg-slate-100 p-1 rounded-xl overflow-x-auto">
+                            <template x-for="tab in updateTabs" :key="tab.id">
+                                <button @click="activeUpdateTab = tab.id" 
+                                        :class="activeUpdateTab === tab.id ? 'bg-white text-teal-800 shadow-sm font-bold' : 'text-slate-600 hover:text-slate-900 font-medium'"
+                                        class="px-3 py-1.5 text-xs rounded-lg whitespace-nowrap transition-all duration-150">
+                                    <span x-text="tab.label"></span>
+                                    <span x-show="tab.count" class="ml-1 px-1.5 py-0.2 bg-slate-200 text-slate-700 rounded-full text-2xs" x-text="tab.count"></span>
+                                </button>
+                            </template>
+                        </div>
+                    </div>
+
+                    <!-- Updates List -->
+                    <div class="space-y-3">
+                        <template x-for="item in filteredUpdates" :key="item.id">
+                            <div class="p-4 rounded-2xl border transition-all duration-200 hover:shadow-md"
+                                 :class="{
+                                    'bg-rose-50/50 border-rose-200': item.category === 'Urgent Care',
+                                    'bg-amber-50/40 border-amber-200': item.category === 'Facility News',
+                                    'bg-emerald-50/40 border-emerald-200': item.category === 'Staff Shoutouts',
+                                    'bg-slate-50/60 border-slate-200': item.category === 'General'
+                                 }">
+                                
+                                <div class="flex items-start justify-between gap-3">
+                                    <div class="flex items-start space-x-3">
+                                        <!-- Category Icon -->
+                                        <div class="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 text-sm mt-0.5"
+                                             :class="{
+                                                'bg-rose-100 text-rose-700': item.category === 'Urgent Care',
+                                                'bg-amber-100 text-amber-700': item.category === 'Facility News',
+                                                'bg-emerald-100 text-emerald-700': item.category === 'Staff Shoutouts',
+                                                'bg-slate-200 text-slate-700': item.category === 'General'
+                                             }">
+                                            <i class="fas" :class="item.icon"></i>
+                                        </div>
+
+                                        <div>
+                                            <div class="flex flex-wrap items-center gap-2">
+                                                <span class="text-2xs font-extrabold uppercase px-2 py-0.5 rounded-full"
+                                                      :class="{
+                                                        'bg-rose-200 text-rose-800': item.category === 'Urgent Care',
+                                                        'bg-amber-200 text-amber-900': item.category === 'Facility News',
+                                                        'bg-emerald-200 text-emerald-900': item.category === 'Staff Shoutouts',
+                                                        'bg-slate-200 text-slate-800': item.category === 'General'
+                                                      }" x-text="item.category"></span>
+                                                
+                                                <span class="text-xs text-slate-400 font-medium">
+                                                    <i class="far fa-clock mr-1"></i><span x-text="item.time"></span>
+                                                </span>
+                                            </div>
+
+                                            <h3 class="text-sm font-bold text-slate-900 mt-1" x-text="item.title"></h3>
+                                            <p class="text-xs text-slate-600 mt-1 line-clamp-2" x-text="item.summary"></p>
+                                        </div>
+                                    </div>
+
+                                    <button @click="openNewsModal(item)" class="shrink-0 bg-white hover:bg-slate-100 text-slate-700 text-xs font-semibold px-3 py-1.5 rounded-xl border border-slate-200 shadow-2xs transition">
+                                        Read
+                                    </button>
+                                </div>
+                            </div>
+                        </template>
+
+                        <!-- Empty State if no updates match tab -->
+                        <div x-show="filteredUpdates.length === 0" class="text-center py-8 text-slate-400">
+                            <i class="fas fa-inbox text-3xl mb-2"></i>
+                            <p class="text-xs">No updates in this category.</p>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+
+            <!-- Right Column: Today's Shift Schedule & Tasks (4 cols on lg) -->
+            <div class="lg:col-span-4 space-y-4">
+                <div class="bg-white rounded-3xl p-5 sm:p-6 shadow-sm border border-slate-200/80 space-y-4">
+                    
+                    <!-- Header -->
+                    <div class="flex items-center justify-between pb-3 border-b border-slate-100">
+                        <div>
+                            <h2 class="text-base font-bold text-slate-900 flex items-center gap-2">
+                                <i class="fas fa-tasks text-teal-600"></i> Today's Shift Tasks
+                            </h2>
+                            <p class="text-2xs text-slate-500">Interactive caregiver checklist</p>
+                        </div>
+                        
+                        <button @click="openAddTaskModal()" class="bg-teal-50 hover:bg-teal-100 text-teal-700 p-2 rounded-xl text-xs font-semibold flex items-center gap-1 transition">
+                            <i class="fas fa-plus"></i> Add
+                        </button>
+                    </div>
+
+                    <!-- Filter pills -->
+                    <div class="flex items-center gap-1.5 text-xs">
+                        <button @click="taskFilter = 'all'" :class="taskFilter === 'all' ? 'bg-teal-700 text-white' : 'bg-slate-100 text-slate-600'" class="px-2.5 py-1 rounded-lg font-medium transition">
+                            All (<span x-text="tasks.length"></span>)
+                        </button>
+                        <button @click="taskFilter = 'pending'" :class="taskFilter === 'pending' ? 'bg-teal-700 text-white' : 'bg-slate-100 text-slate-600'" class="px-2.5 py-1 rounded-lg font-medium transition">
+                            Pending (<span x-text="pendingTaskCount"></span>)
+                        </button>
+                        <button @click="taskFilter = 'completed'" :class="taskFilter === 'completed' ? 'bg-teal-700 text-white' : 'bg-slate-100 text-slate-600'" class="px-2.5 py-1 rounded-lg font-medium transition">
+                            Done (<span x-text="completedTaskCount"></span>)
+                        </button>
+                    </div>
+
+                    <!-- Tasks List -->
+                    <div class="space-y-2.5 max-h-[460px] overflow-y-auto pr-1">
+                        <template x-for="task in filteredTasks" :key="task.id">
+                            <div class="p-3 rounded-2xl border transition-all duration-200 flex items-start space-x-3"
+                                 :class="task.completed ? 'bg-slate-50 border-slate-200 opacity-60' : 'bg-white border-slate-200 hover:border-teal-300 shadow-2xs'">
+                                
+                                <!-- Custom Interactive Checkbox -->
+                                <button @click="toggleTask(task.id)" class="mt-0.5 shrink-0 focus:outline-none">
+                                    <div class="w-5 h-5 rounded-md border flex items-center justify-center transition-all"
+                                         :class="task.completed ? 'bg-emerald-600 border-emerald-600 text-white' : 'border-slate-300 bg-white hover:border-teal-500'">
+                                        <i x-show="task.completed" class="fas fa-check text-xs"></i>
+                                    </div>
+                                </button>
+
+                                <!-- Task Info -->
+                                <div class="flex-1 min-w-0">
+                                    <div class="flex items-center justify-between gap-1">
+                                        <span class="text-2xs font-mono font-bold text-teal-700 bg-teal-50 px-1.5 py-0.5 rounded" x-text="task.time"></span>
+                                        <span x-show="task.priority" class="text-2xs font-bold text-rose-700 bg-rose-50 px-1.5 py-0.5 rounded">High Priority</span>
+                                    </div>
+
+                                    <h4 class="text-xs font-bold text-slate-800 mt-1" :class="{ 'line-through text-slate-500': task.completed }" x-text="task.title"></h4>
+                                    
+                                    <div class="flex items-center space-x-2 text-2xs text-slate-500 mt-0.5">
+                                        <span><i class="fas fa-door-closed text-slate-400"></i> <span x-text="task.room"></span></span>
+                                        <span>•</span>
+                                        <span class="truncate" x-text="task.resident"></span>
+                                    </div>
+
+                                    <!-- Quick Note display if present -->
+                                    <div x-show="task.note" class="mt-1.5 text-2xs bg-slate-100 p-1.5 rounded-lg text-slate-600 italic">
+                                        <i class="far fa-sticky-note mr-1 text-amber-500"></i> <span x-text="task.note"></span>
+                                    </div>
+                                </div>
+
+                                <!-- Add Note Button -->
+                                <button @click="openTaskNoteModal(task)" class="text-slate-400 hover:text-teal-700 p-1 text-xs shrink-0" title="Add Note">
+                                    <i class="far fa-edit"></i>
+                                </button>
+                            </div>
+                        </template>
+
+                        <!-- Empty State -->
+                        <div x-show="filteredTasks.length === 0" class="text-center py-6 text-slate-400">
+                            <p class="text-xs">No tasks match selected filter.</p>
+                        </div>
+                    </div>
+
+                    <!-- Progress summary footer -->
+                    <div class="pt-3 border-t border-slate-100 flex items-center justify-between text-xs text-slate-600">
+                        <span>Completion Rate</span>
+                        <span class="font-bold font-mono text-teal-700" x-text="completionPercent + '%'"></span>
+                    </div>
+
+                </div>
+            </div>
+
+        </section>
+
+    </main>
+
+    <!-- Quick Tools / Urgent Actions Floating Bar (Mobile Friendly Bottom Bar) -->
+    <div class="fixed bottom-4 left-4 right-4 max-w-lg mx-auto z-40 bg-slate-900/90 backdrop-blur-lg border border-slate-700/80 rounded-full p-2 shadow-2xl flex items-center justify-around text-white">
+        
+        <!-- Action 1: Call Supervisor -->
+        <button @click="activeModal = 'callSupervisor'" class="flex flex-col items-center justify-center py-1 px-3 rounded-full hover:bg-slate-800 transition text-slate-300 hover:text-white">
+            <div class="w-8 h-8 rounded-full bg-slate-800 flex items-center justify-center text-teal-400 text-sm mb-0.5">
+                <i class="fas fa-headset"></i>
+            </div>
+            <span class="text-2xs font-medium">Supervisor</span>
+        </button>
+
+        <!-- Action 2: Report Incident -->
+        <button @click="activeModal = 'reportIncident'" class="flex flex-col items-center justify-center py-1 px-3 rounded-full hover:bg-slate-800 transition text-slate-300 hover:text-white">
+            <div class="w-8 h-8 rounded-full bg-amber-500/20 text-amber-400 flex items-center justify-center text-sm mb-0.5 border border-amber-500/40">
+                <i class="fas fa-file-exclamation"></i>
+            </div>
+            <span class="text-2xs font-medium">Report Incident</span>
+        </button>
+
+        <!-- Action 3: Broadcast Hand-off -->
+        <button @click="activeModal = 'handOff'" class="flex flex-col items-center justify-center py-1 px-3 rounded-full hover:bg-slate-800 transition text-slate-300 hover:text-white">
+            <div class="w-8 h-8 rounded-full bg-sky-500/20 text-sky-400 flex items-center justify-center text-sm mb-0.5 border border-sky-500/40">
+                <i class="fas fa-bullhorn"></i>
+            </div>
+            <span class="text-2xs font-medium">Hand-off Note</span>
+        </button>
+
+        <!-- Action 4: Urgent Emergency Broadcast -->
+        <button @click="triggerSOSAlert()" class="flex flex-col items-center justify-center py-1 px-3 rounded-full bg-rose-600 hover:bg-rose-700 text-white shadow-lg transition">
+            <div class="w-8 h-8 rounded-full flex items-center justify-center text-sm mb-0.5 animate-bounce">
+                <i class="fas fa-bell"></i>
+            </div>
+            <span class="text-2xs font-bold uppercase tracking-wider">SOS Call</span>
+        </button>
+
+    </div>
+
+
+    <!-- ================= MODAL 1: REPORT INCIDENT / FALL ================= -->
+    <div x-show="activeModal === 'reportIncident'" x-cloak class="fixed inset-0 z-50 overflow-y-auto" style="display: none;">
+        <div class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm transition-opacity" @click="activeModal = null"></div>
+
+        <div class="min-h-full flex items-center justify-center p-4">
+            <div class="relative bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl border border-slate-100 space-y-4">
+                <div class="flex items-center justify-between pb-3 border-b border-slate-100">
+                    <div class="flex items-center space-x-2 text-rose-600">
+                        <i class="fas fa-triangle-exclamation text-xl"></i>
+                        <h3 class="text-lg font-bold text-slate-900">Report Resident Incident / Fall</h3>
+                    </div>
+                    <button @click="activeModal = null" class="text-slate-400 hover:text-slate-600 p-1">
+                        <i class="fas fa-times text-lg"></i>
+                    </button>
+                </div>
+
+                <form @submit.prevent="submitIncidentForm()" class="space-y-4">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 mb-1">Select Resident</label>
+                        <select x-model="incidentForm.resident" class="w-full text-xs p-3 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:ring-2 focus:ring-teal-500 outline-none">
+                            <option value="">-- Choose Resident --</option>
+                            <template x-for="res in wingResidents" :key="res.room">
+                                <option :value="res.name + ' (' + res.room + ')'" x-text="res.name + ' - Room ' + res.room"></option>
+                            </template>
+                        </select>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-xs font-bold text-slate-700 mb-1">Incident Type</label>
+                            <select x-model="incidentForm.type" class="w-full text-xs p-3 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:ring-2 focus:ring-teal-500 outline-none">
+                                <option value="Fall / Slip">Fall / Slip</option>
+                                <option value="Behavioral Concern">Behavioral Concern</option>
+                                <option value="Medication Refusal">Medication Refusal</option>
+                                <option value="Skin Injury / Abrasion">Skin Injury / Abrasion</option>
+                                <option value="Equipment Issue">Equipment Issue</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-700 mb-1">Severity Level</label>
+                            <select x-model="incidentForm.severity" class="w-full text-xs p-3 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:ring-2 focus:ring-teal-500 outline-none">
+                                <option value="Low - Monitored">Low - Monitored</option>
+                                <option value="Moderate - First Aid">Moderate - First Aid</option>
+                                <option value="High - RN Assessment Needed">High - RN Assessment</option>
+                                <option value="Urgent - Doctor Called">Urgent - Doctor Called</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 mb-1">Immediate Actions Taken & Details</label>
+                        <textarea x-model="incidentForm.details" rows="3" placeholder="Describe what happened, resident's current status, and vital checks completed..." class="w-full text-xs p-3 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:ring-2 focus:ring-teal-500 outline-none"></textarea>
+                    </div>
+
+                    <div class="flex items-center space-x-2">
+                        <input type="checkbox" id="notifySup" x-model="incidentForm.notifySupervisor" class="rounded text-teal-600 focus:ring-teal-500">
+                        <label for="notifySup" class="text-xs font-medium text-slate-700">Immediately notify Shift Supervisor (Sarah Jenkins, RN)</label>
+                    </div>
+
+                    <div class="flex items-center justify-end space-x-3 pt-3 border-t border-slate-100">
+                        <button type="button" @click="activeModal = null" class="px-4 py-2 text-xs font-semibold text-slate-600 hover:text-slate-800">Cancel</button>
+                        <button type="submit" class="px-5 py-2.5 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-bold shadow-md transition">Submit Official Report</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- ================= MODAL 2: CALL SUPERVISOR ================= -->
+    <div x-show="activeModal === 'callSupervisor'" x-cloak class="fixed inset-0 z-50 overflow-y-auto" style="display: none;">
+        <div class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm transition-opacity" @click="activeModal = null"></div>
+
+        <div class="min-h-full flex items-center justify-center p-4">
+            <div class="relative bg-white rounded-3xl max-w-sm w-full p-6 shadow-2xl border border-slate-100 text-center space-y-4">
+                <div class="w-20 h-20 rounded-full mx-auto relative overflow-hidden ring-4 ring-teal-500/20">
+                    <img src="https://images.unsplash.com/photo-1559839734-2b71ea197ec2?auto=format&fit=crop&q=80&w=300" alt="Sarah Jenkins, RN" class="w-full h-full object-cover">
+                </div>
+
+                <div>
+                    <h3 class="text-lg font-bold text-slate-900">Sarah Jenkins, BSN, RN</h3>
+                    <p class="text-xs text-teal-700 font-semibold">Charge Nurse & Shift Supervisor</p>
+                    <p class="text-2xs text-slate-400 mt-0.5">On Duty • Extension #402</p>
+                </div>
+
+                <div class="bg-teal-50 p-3 rounded-2xl border border-teal-100 text-xs text-teal-800">
+                    <i class="fas fa-location-dot mr-1 text-teal-600"></i> Currently in Central Nursing Station
+                </div>
+
+                <div class="space-y-2 pt-2">
+                    <button @click="simulateSupervisorCall()" class="w-full py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-md flex items-center justify-center space-x-2 transition">
+                        <i class="fas fa-phone-alt"></i>
+                        <span>Start Direct Voice Call</span>
+                    </button>
+                    
+                    <button @click="showToast('Walkie-talkie ping sent to Nurse Sarah', 'info')" class="w-full py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-xs rounded-xl flex items-center justify-center space-x-2 transition">
+                        <i class="fas fa-walkie-talkie text-teal-600"></i>
+                        <span>Send Radio Alert / Walkie Ping</span>
+                    </button>
+                </div>
+
+                <button @click="activeModal = null" class="text-xs text-slate-400 hover:text-slate-600 pt-2 block mx-auto">Close Window</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ================= MODAL 3: BROADCAST HANDOFF NOTE ================= -->
+    <div x-show="activeModal === 'handOff'" x-cloak class="fixed inset-0 z-50 overflow-y-auto" style="display: none;">
+        <div class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm transition-opacity" @click="activeModal = null"></div>
+
+        <div class="min-h-full flex items-center justify-center p-4">
+            <div class="relative bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-slate-100 space-y-4">
+                <div class="flex items-center justify-between pb-3 border-b border-slate-100">
+                    <div class="flex items-center space-x-2 text-sky-600">
+                        <i class="fas fa-comments text-xl"></i>
+                        <h3 class="text-lg font-bold text-slate-900">Shift Handover Note</h3>
+                    </div>
+                    <button @click="activeModal = null" class="text-slate-400 hover:text-slate-600 p-1">
+                        <i class="fas fa-times text-lg"></i>
+                    </button>
+                </div>
+
+                <p class="text-xs text-slate-500 leading-relaxed">
+                    Log key observations and updates for the incoming Afternoon Shift caregivers in Memory Care B.
+                </p>
+
+                <div class="space-y-3">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 mb-1">Shift Summary Note</label>
+                        <textarea x-model="handOffNoteText" rows="4" placeholder="e.g., Room 102 was restive during breakfast; Room 108 vitals stabilized; family visited Room 111..." class="w-full text-xs p-3 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:ring-2 focus:ring-teal-500 outline-none"></textarea>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 mb-1">Handover Priority Flag</label>
+                        <select class="w-full text-xs p-3 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:ring-2 focus:ring-teal-500 outline-none">
+                            <option>Standard Routine Shift Handover</option>
+                            <option>High Priority - Follow up Required</option>
+                            <option>Medical Observation Flagged</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="flex items-center justify-end space-x-3 pt-3 border-t border-slate-100">
+                    <button type="button" @click="activeModal = null" class="px-4 py-2 text-xs font-semibold text-slate-600">Cancel</button>
+                    <button type="button" @click="submitHandOffNote()" class="px-5 py-2.5 bg-sky-600 hover:bg-sky-700 text-white rounded-xl text-xs font-bold shadow-md transition">Post Handover Note</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ================= MODAL 4: NEWS ARTICLE DETAIL ================= -->
+    <div x-show="activeModal === 'newsDetail'" x-cloak class="fixed inset-0 z-50 overflow-y-auto" style="display: none;">
+        <div class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm transition-opacity" @click="activeModal = null"></div>
+
+        <div class="min-h-full flex items-center justify-center p-4">
+            <template x-if="selectedNews">
+                <div class="relative bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl border border-slate-100 space-y-4">
+                    <div class="flex items-start justify-between">
+                        <span class="text-2xs font-extrabold uppercase px-2.5 py-1 rounded-full bg-teal-100 text-teal-800" x-text="selectedNews.category"></span>
+                        <button @click="activeModal = null" class="text-slate-400 hover:text-slate-600 p-1">
+                            <i class="fas fa-times text-lg"></i>
+                        </button>
+                    </div>
+
+                    <h3 class="text-lg font-bold text-slate-900" x-text="selectedNews.title"></h3>
+                    
+                    <div class="flex items-center space-x-3 text-xs text-slate-500 border-b border-slate-100 pb-3">
+                        <span><i class="far fa-user mr-1"></i> <span x-text="selectedNews.author || 'Admin Staff'"></span></span>
+                        <span>•</span>
+                        <span><i class="far fa-clock mr-1"></i> <span x-text="selectedNews.time"></span></span>
+                    </div>
+
+                    <p class="text-xs text-slate-700 leading-relaxed" x-text="selectedNews.fullText || selectedNews.summary"></p>
+
+                    <div class="pt-4 border-t border-slate-100 flex items-center justify-between">
+                        <button @click="showToast('Notice marked as read', 'success'); activeModal = null;" class="w-full py-2.5 bg-teal-700 hover:bg-teal-800 text-white text-xs font-bold rounded-xl shadow-md transition">
+                            <i class="fas fa-check mr-1"></i> Acknowledge & Mark Read
+                        </button>
+                    </div>
+                </div>
+            </template>
+        </div>
+    </div>
+
+    <!-- ================= MODAL 5: ASSIGNED WING ROSTER ================= -->
+    <div x-show="activeModal === 'wingRoster'" x-cloak class="fixed inset-0 z-50 overflow-y-auto" style="display: none;">
+        <div class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm transition-opacity" @click="activeModal = null"></div>
+
+        <div class="min-h-full flex items-center justify-center p-4">
+            <div class="relative bg-white rounded-3xl max-w-2xl w-full p-6 shadow-2xl border border-slate-100 space-y-4">
+                <div class="flex items-center justify-between pb-3 border-b border-slate-100">
+                    <div>
+                        <h3 class="text-lg font-bold text-slate-900">Assigned Wing Roster - Memory Care B</h3>
+                        <p class="text-xs text-slate-500">12 Resident Beds • Rooms 101 to 112</p>
+                    </div>
+                    <button @click="activeModal = null" class="text-slate-400 hover:text-slate-600 p-1">
+                        <i class="fas fa-times text-lg"></i>
+                    </button>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-[60vh] overflow-y-auto pr-1">
+                    <template x-for="res in wingResidents" :key="res.room">
+                        <div class="p-3.5 rounded-2xl border border-slate-200 bg-slate-50/70 hover:bg-white hover:border-teal-400 transition-all flex items-start justify-between">
+                            <div>
+                                <div class="flex items-center space-x-2">
+                                    <span class="bg-teal-800 text-white text-2xs font-bold px-2 py-0.5 rounded-md font-mono" x-text="'Room ' + res.room"></span>
+                                    <h4 class="text-xs font-bold text-slate-900" x-text="res.name"></h4>
+                                </div>
+                                <p class="text-2xs text-slate-500 mt-1">
+                                    Diet: <span class="text-slate-700 font-semibold" x-text="res.diet"></span>
+                                </p>
+                                <p class="text-2xs text-slate-500">
+                                    Care Level: <span class="text-teal-700 font-semibold" x-text="res.careLevel"></span>
+                                </p>
+                            </div>
+                            <button @click="openVitalsModalFor(res.name)" class="text-2xs bg-teal-50 hover:bg-teal-100 text-teal-800 font-bold px-2.5 py-1.5 rounded-lg transition">
+                                + Vitals
+                            </button>
+                        </div>
+                    </template>
+                </div>
+
+                <div class="pt-3 border-t border-slate-100 flex justify-end">
+                    <button @click="activeModal = null" class="px-5 py-2 bg-slate-800 text-white rounded-xl text-xs font-bold">Close Roster</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ================= MODAL 6: RECORD VITAL SIGNS ================= -->
+    <div x-show="activeModal === 'vitalsLog'" x-cloak class="fixed inset-0 z-50 overflow-y-auto" style="display: none;">
+        <div class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm transition-opacity" @click="activeModal = null"></div>
+
+        <div class="min-h-full flex items-center justify-center p-4">
+            <div class="relative bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-slate-100 space-y-4">
+                <div class="flex items-center justify-between pb-3 border-b border-slate-100">
+                    <div class="flex items-center space-x-2 text-rose-600">
+                        <i class="fas fa-heart-pulse text-xl"></i>
+                        <h3 class="text-lg font-bold text-slate-900">Record Vital Signs</h3>
+                    </div>
+                    <button @click="activeModal = null" class="text-slate-400 hover:text-slate-600 p-1">
+                        <i class="fas fa-times text-lg"></i>
+                    </button>
+                </div>
+
+                <form @submit.prevent="submitVitalsForm()" class="space-y-3">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 mb-1">Resident</label>
+                        <select x-model="vitalsForm.resident" class="w-full text-xs p-3 rounded-xl border border-slate-200 bg-slate-50 outline-none">
+                            <template x-for="res in wingResidents" :key="res.room">
+                                <option :value="res.name" x-text="res.name + ' (Room ' + res.room + ')'"></option>
+                            </template>
+                        </select>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-xs font-bold text-slate-700 mb-1">Blood Pressure</label>
+                            <input type="text" x-model="vitalsForm.bp" placeholder="e.g. 120/80" class="w-full text-xs p-3 rounded-xl border border-slate-200 bg-slate-50 outline-none">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-700 mb-1">Pulse Rate (BPM)</label>
+                            <input type="number" x-model="vitalsForm.pulse" placeholder="e.g. 72" class="w-full text-xs p-3 rounded-xl border border-slate-200 bg-slate-50 outline-none">
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-xs font-bold text-slate-700 mb-1">Temperature (°F)</label>
+                            <input type="text" x-model="vitalsForm.temp" placeholder="e.g. 98.6" class="w-full text-xs p-3 rounded-xl border border-slate-200 bg-slate-50 outline-none">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-700 mb-1">SpO2 Oxygen (%)</label>
+                            <input type="number" x-model="vitalsForm.spo2" placeholder="e.g. 98" class="w-full text-xs p-3 rounded-xl border border-slate-200 bg-slate-50 outline-none">
+                        </div>
+                    </div>
+
+                    <div class="flex items-center justify-end space-x-3 pt-3 border-t border-slate-100">
+                        <button type="button" @click="activeModal = null" class="px-4 py-2 text-xs font-semibold text-slate-600">Cancel</button>
+                        <button type="submit" class="px-5 py-2.5 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-bold shadow-md transition">Save Vitals Log</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- ================= MODAL 7: ADD SHIFT TASK ================= -->
+    <div x-show="activeModal === 'addTask'" x-cloak class="fixed inset-0 z-50 overflow-y-auto" style="display: none;">
+        <div class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm transition-opacity" @click="activeModal = null"></div>
+
+        <div class="min-h-full flex items-center justify-center p-4">
+            <div class="relative bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-slate-100 space-y-4">
+                <div class="flex items-center justify-between pb-3 border-b border-slate-100">
+                    <h3 class="text-lg font-bold text-slate-900">Add Shift Responsibilty Task</h3>
+                    <button @click="activeModal = null" class="text-slate-400 hover:text-slate-600 p-1">
+                        <i class="fas fa-times text-lg"></i>
+                    </button>
+                </div>
+
+                <form @submit.prevent="submitNewTask()" class="space-y-3">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 mb-1">Task Description</label>
+                        <input type="text" x-model="newTaskForm.title" required placeholder="e.g. Assist Bathing / Refill Water Pitchers" class="w-full text-xs p-3 rounded-xl border border-slate-200 bg-slate-50 outline-none">
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-xs font-bold text-slate-700 mb-1">Target Time</label>
+                            <input type="time" x-model="newTaskForm.time" required class="w-full text-xs p-3 rounded-xl border border-slate-200 bg-slate-50 outline-none">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-700 mb-1">Room #</label>
+                            <input type="text" x-model="newTaskForm.room" placeholder="e.g. Room 105" class="w-full text-xs p-3 rounded-xl border border-slate-200 bg-slate-50 outline-none">
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 mb-1">Resident Name</label>
+                        <input type="text" x-model="newTaskForm.resident" placeholder="e.g. Resident Johnson" class="w-full text-xs p-3 rounded-xl border border-slate-200 bg-slate-50 outline-none">
+                    </div>
+
+                    <div class="flex items-center justify-end space-x-3 pt-3 border-t border-slate-100">
+                        <button type="button" @click="activeModal = null" class="px-4 py-2 text-xs font-semibold text-slate-600">Cancel</button>
+                        <button type="submit" class="px-5 py-2.5 bg-teal-700 hover:bg-teal-800 text-white rounded-xl text-xs font-bold shadow-md transition">Add to Schedule</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- ================= MODAL 8: SHIFT STATUS TOGGLE ================= -->
+    <div x-show="activeModal === 'shiftStatus'" x-cloak class="fixed inset-0 z-50 overflow-y-auto" style="display: none;">
+        <div class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm transition-opacity" @click="activeModal = null"></div>
+
+        <div class="min-h-full flex items-center justify-center p-4">
+            <div class="relative bg-white rounded-3xl max-w-xs w-full p-6 shadow-2xl border border-slate-100 space-y-4 text-center">
+                <h3 class="text-base font-bold text-slate-900">Update Shift Status</h3>
+                
+                <div class="space-y-2">
+                    <button @click="setShiftStatus('On Duty')" class="w-full py-3 rounded-xl font-bold text-xs border transition flex items-center justify-center space-x-2" :class="shiftStatus === 'On Duty' ? 'bg-emerald-800 text-white border-emerald-700' : 'bg-slate-50 text-slate-700 hover:bg-slate-100'">
+                        <span class="w-2.5 h-2.5 rounded-full bg-emerald-400"></span>
+                        <span>On Duty - Active Shift</span>
+                    </button>
+
+                    <button @click="setShiftStatus('On Meal Break')" class="w-full py-3 rounded-xl font-bold text-xs border transition flex items-center justify-center space-x-2" :class="shiftStatus === 'On Meal Break' ? 'bg-amber-800 text-white border-amber-700' : 'bg-slate-50 text-slate-700 hover:bg-slate-100'">
+                        <span class="w-2.5 h-2.5 rounded-full bg-amber-400"></span>
+                        <span>On Meal Break (30 Min)</span>
+                    </button>
+
+                    <button @click="setShiftStatus('Off Duty')" class="w-full py-3 rounded-xl font-bold text-xs border transition flex items-center justify-center space-x-2" :class="shiftStatus === 'Off Duty' ? 'bg-slate-800 text-white border-slate-700' : 'bg-slate-50 text-slate-700 hover:bg-slate-100'">
+                        <span class="w-2.5 h-2.5 rounded-full bg-slate-400"></span>
+                        <span>Clock Out - Shift Ended</span>
+                    </button>
+                </div>
+
+                <button @click="activeModal = null" class="text-xs text-slate-400 hover:text-slate-600 block mx-auto">Close</button>
+            </div>
+        </div>
+    </div>
+
+
+    <script>
+        function appData() {
+            return {
+                // Time & Status
+                currentDateStr: '',
+                currentTimeStr: '',
+                shiftStatus: 'On Duty',
+                shiftProgressPercent: 38,
+                showHighPriorityBanner: true,
+                
+                // Modals
+                activeModal: null,
+                selectedNews: null,
+
+                // Toast Notification
+                toast: {
+                    visible: false,
+                    title: '',
+                    message: '',
+                    type: 'success'
+                },
+
+                // Updates Tab State
+                activeUpdateTab: 'all',
+                updateTabs: [
+                    { id: 'all', label: 'All Updates', count: 4 },
+                    { id: 'urgent', label: 'Urgent Care', count: 1 },
+                    { id: 'news', label: 'Facility News', count: 2 },
+                    { id: 'shoutouts', label: 'Staff Shoutouts', count: 1 }
+                ],
+
+                // Updates Data
+                updates: [
+                    {
+                        id: 1,
+                        category: 'Urgent Care',
+                        icon: 'fa-user-nurse',
+                        title: 'Updated Care Plan for Room 104 - Resident Johnson',
+                        time: '07:15 AM Today',
+                        summary: 'Physician updated care protocol: High Fall Risk active. Use 2-person gait belt transfer during all movements.',
+                        fullText: 'Resident Johnson experienced mild dizziness during morning stand test. Dr. Aris Thorne updated the care plan: Caregivers must utilize 2-person transfer with gait belt at all times. Physical therapy scheduled for 10:30 AM evaluation.',
+                        author: 'Dr. Aris Thorne (Primary Care)'
+                    },
+                    {
+                        id: 2,
+                        category: 'Facility News',
+                        icon: 'fa-syringe',
+                        title: 'Annual Flu Vaccination Drive Tomorrow',
+                        time: '08:00 AM Today',
+                        summary: 'Flu vaccines will be administered in the Recreation Hall for all staff and ambulatory residents starting 2:00 PM.',
+                        fullText: 'Our annual seasonal flu vaccination drive will take place tomorrow in the Recreation Hall from 2:00 PM to 6:00 PM. Pharmacy staff will be on site. Please log consents in the portal by end of day.',
+                        author: 'Facility Administration'
+                    },
+                    {
+                        id: 3,
+                        category: 'Facility News',
+                        icon: 'fa-wrench',
+                        title: 'Elevator B Maintenance Maintenance Window (2 PM - 4 PM)',
+                        time: 'Yesterday',
+                        summary: 'Elevator B in North Wing will be undergoing routine safety inspection today. Please use Elevator A or West Ramp.',
+                        fullText: 'Routine quarterly safety inspections for Elevator B are scheduled today between 2:00 PM and 4:00 PM. Mobile meal carts for Memory Care B will be rerouted via Service Elevator A.',
+                        author: 'Operations Team'
+                    },
+                    {
+                        id: 4,
+                        category: 'Staff Shoutouts',
+                        icon: 'fa-star',
+                        title: 'Kudos to Night Shift Caregiver Marcus!',
+                        time: '06:45 AM Today',
+                        summary: 'Special thanks to Marcus for exceptional attention to detail and calm response during early morning thunderstorm.',
+                        fullText: 'The entire Memory Care team gives a warm shoutout to Marcus Vance, CNA, for comforting 3 restless residents during last night\'s heavy rainstorm and ensuring all log entries were pristine.',
+                        author: 'Sarah Jenkins, RN'
+                    }
+                ],
+
+                // Tasks Data
+                taskFilter: 'all',
+                tasks: [
+                    { id: 101, time: '08:00 AM', title: 'Morning Med Pass - Wing B', room: 'Rooms 101-112', resident: 'Wing Residents', completed: true, priority: true, note: 'Completed at 08:12 AM with Nurse Sarah' },
+                    { id: 102, time: '09:00 AM', title: 'Assisted Bathing & Grooming', room: 'Room 102', resident: 'Eleanor Vance', completed: false, priority: false, note: '' },
+                    { id: 103, time: '09:30 AM', title: 'Vital Signs & O2 Sat Check', room: 'Room 108', resident: 'Arthur Pendelton', completed: false, priority: true, note: '' },
+                    { id: 104, time: '10:30 AM', title: 'Hydration & Snack Round', room: 'Wing B Lounge', resident: 'All Wing Residents', completed: false, priority: false, note: '' },
+                    { id: 105, time: '12:00 PM', title: 'Dining Room Meal Assistance', room: 'Main Dining Hall', resident: 'Table 4 Group', completed: false, priority: false, note: '' },
+                    { id: 106, time: '02:00 PM', title: 'Afternoon Med Pass & Log', room: 'Rooms 101-112', resident: 'Wing Residents', completed: false, priority: false, note: '' }
+                ],
+
+                // Wing Residents List
+                wingResidents: [
+                    { room: '101', name: 'Martha Stewart', diet: 'Low Sodium Regular', careLevel: 'Assist Level 1' },
+                    { room: '102', name: 'Eleanor Vance', diet: 'Pureed Soft', careLevel: 'Assist Level 2' },
+                    { room: '104', name: 'Robert Johnson', diet: 'Diabetic Regular', careLevel: 'Fall Risk High' },
+                    { room: '105', name: 'Clara Oswald', diet: 'Regular', careLevel: 'Independent' },
+                    { room: '108', name: 'Arthur Pendelton', diet: 'Low Sodium / Fluid Guard', careLevel: 'Vitals Watch' },
+                    { room: '110', name: 'Henry Ford', diet: 'Soft Chopped', careLevel: 'Assist Level 2' },
+                    { room: '112', name: 'Grace Hopper', diet: 'Regular', careLevel: 'Independent' }
+                ],
+
+                // Form States
+                incidentForm: {
+                    resident: '',
+                    type: 'Fall / Slip',
+                    severity: 'Low - Monitored',
+                    details: '',
+                    notifySupervisor: true
+                },
+
+                vitalsForm: {
+                    resident: 'Robert Johnson',
+                    bp: '128/82',
+                    pulse: '74',
+                    temp: '98.4',
+                    spo2: '97'
+                },
+
+                newTaskForm: {
+                    title: '',
+                    time: '11:00',
+                    room: '',
+                    resident: ''
+                },
+
+                handOffNoteText: '',
+
+                get filteredUpdates() {
+                    if (this.activeUpdateTab === 'all') return this.updates;
+                    if (this.activeUpdateTab === 'urgent') return this.updates.filter(u => u.category === 'Urgent Care');
+                    if (this.activeUpdateTab === 'news') return this.updates.filter(u => u.category === 'Facility News');
+                    if (this.activeUpdateTab === 'shoutouts') return this.updates.filter(u => u.category === 'Staff Shoutouts');
+                    return this.updates;
+                },
+
+                get filteredTasks() {
+                    if (this.taskFilter === 'pending') return this.tasks.filter(t => !t.completed);
+                    if (this.taskFilter === 'completed') return this.tasks.filter(t => t.completed);
+                    return this.tasks;
+                },
+
+                get pendingTaskCount() {
+                    return this.tasks.filter(t => !t.completed).length;
+                },
+
+                get completedTaskCount() {
+                    return this.tasks.filter(t => t.completed).length;
+                },
+
+                get completionPercent() {
+                    if (this.tasks.length === 0) return 0;
+                    return Math.round((this.completedTaskCount / this.tasks.length) * 100);
+                },
+
+                initApp() {
+                    this.updateTime();
+                    setInterval(() => {
+                        this.updateTime();
+                    }, 1000);
+                },
+
+                updateTime() {
+                    const now = new Date();
+                    this.currentDateStr = now.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
+                    this.currentTimeStr = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+                },
+
+                showToast(message, type = 'success', title = 'System Update') {
+                    this.toast.title = title;
+                    this.toast.message = message;
+                    this.toast.type = type;
+                    this.toast.visible = true;
+
+                    setTimeout(() => {
+                        this.toast.visible = false;
+                    }, 4000);
+                },
+
+                showUnreadToast() {
+                    this.showToast('You have 2 unread shift announcements and 1 care plan update.', 'info', 'Notifications');
+                },
+
+                toggleTask(id) {
+                    const task = this.tasks.find(t => t.id === id);
+                    if (task) {
+                        task.completed = !task.completed;
+                        if (task.completed) {
+                            this.showToast(`Task marked completed: ${task.title}`, 'success');
+                        }
+                    }
+                },
+
+                setShiftStatus(status) {
+                    this.shiftStatus = status;
+                    this.activeModal = null;
+                    this.showToast(`Shift status changed to: ${status}`, status === 'On Duty' ? 'success' : 'warning');
+                },
+
+                openNewsModal(item) {
+                    this.selectedNews = item;
+                    this.activeModal = 'newsDetail';
+                },
+
+                openRosterModal() {
+                    this.activeModal = 'wingRoster';
+                },
+
+                openMedPassModal() {
+                    this.showToast('Opening Medication Administration Record (MAR)...', 'info', 'Med Pass Tool');
+                },
+
+                openCarePlansModal() {
+                    this.showToast('Care Plans updated today for Room 104 & Room 108', 'info', 'Care Log');
+                },
+
+                openScheduleModal() {
+                    this.showToast('Opening Master Activity & Dining Roster', 'info', 'Dining Schedule');
+                },
+
+                openVitalsModal() {
+                    this.activeModal = 'vitalsLog';
+                },
+
+                openVitalsModalFor(residentName) {
+                    this.vitalsForm.resident = residentName;
+                    this.activeModal = 'vitalsLog';
+                },
+
+                openAddTaskModal() {
+                    this.newTaskForm = { title: '', time: '11:00', room: '', resident: '' };
+                    this.activeModal = 'addTask';
+                },
+
+                openTaskNoteModal(task) {
+                    const note = prompt('Add/Edit Note for: ' + task.title, task.note || '');
+                    if (note !== null) {
+                        task.note = note;
+                        this.showToast('Note updated on task schedule', 'success');
+                    }
+                },
+
+                submitIncidentForm() {
+                    if (!this.incidentForm.details) {
+                        alert('Please describe the incident details.');
+                        return;
+                    }
+                    this.activeModal = null;
+                    this.showToast(`Incident reported for ${this.incidentForm.resident || 'Resident'}. Supervisor notified.`, 'danger', 'Incident Logged');
+                    this.incidentForm.details = '';
+                },
+
+                submitVitalsForm() {
+                    this.activeModal = null;
+                    this.showToast(`Vitals recorded for ${this.vitalsForm.resident}: BP ${this.vitalsForm.bp}, Temp ${this.vitalsForm.temp}°F`, 'success', 'Vitals Saved');
+                },
+
+                submitNewTask() {
+                    if (!this.newTaskForm.title) return;
+                    
+                    const timeFormatted = this.formatTime(this.newTaskForm.time);
+                    this.tasks.push({
+                        id: Date.now(),
+                        time: timeFormatted,
+                        title: this.newTaskForm.title,
+                        room: this.newTaskForm.room || 'Wing B',
+                        resident: this.newTaskForm.resident || 'Assigned Resident',
+                        completed: false,
+                        priority: false,
+                        note: ''
+                    });
+
+                    // Sort tasks by time
+                    this.tasks.sort((a, b) => a.time.localeCompare(b.time));
+
+                    this.activeModal = null;
+                    this.showToast('New task added to your shift checklist', 'success');
+                },
+
+                formatTime(time24) {
+                    if (!time24) return '12:00 PM';
+                    const [h, m] = time24.split(':');
+                    const hour = parseInt(h);
+                    const ampm = hour >= 12 ? 'PM' : 'AM';
+                    const hour12 = hour % 12 || 12;
+                    return `${hour12.toString().padStart(2, '0')}:${m} ${ampm}`;
+                },
+
+                submitHandOffNote() {
+                    this.activeModal = null;
+                    this.showToast('Shift handoff note broadcasted to oncoming shift team.', 'success', 'Note Broadcasted');
+                    this.handOffNoteText = '';
+                },
+
+                simulateSupervisorCall() {
+                    this.activeModal = null;
+                    this.showToast('Connecting voice call to Sarah Jenkins, RN (Ext #402)...', 'info', 'Calling Supervisor');
+                },
+
+                triggerSOSAlert() {
+                    if (confirm('Broadcast Urgent SOS Nurse Emergency Alert to Wing B?')) {
+                        this.showToast('🚨 SOS EMERGENCY BROADCAST SENT! Charge Nurse and Security dispatched to Wing B.', 'danger', 'SOS EMERGENCY');
+                    }
+                }
+            }
+        }
+    </script>
+</body>
+</html>
