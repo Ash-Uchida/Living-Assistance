@@ -1,18 +1,17 @@
 ---
 name: testing-features
-description: Writes Playwright end-to-end tests for new or changed features in the Homestead operations prototypes (Prototype_01/ and Prototype_02/), then runs that prototype's full test suite so new work is checked against all earlier tests. Use after building or changing a feature, page, or flow in either prototype, or when the user asks to test, add tests, run tests, run Playwright, or check nothing broke.
+description: Writes Playwright end-to-end tests for new or changed features in the Homestead operations app (Prototype_02/), then runs the full test suite so new work is checked against all earlier tests. Use after building or changing a feature, page, or flow, or when the user asks to test, add tests, run tests, run Playwright, or check nothing broke.
 ---
 
-# Testing features (Homestead prototypes)
+# Testing features (Homestead app)
 
-There are two separate apps (Next.js, demo data in `localStorage`). Work out which one changed and test **that** folder; if shared rules changed in both, test both.
+One Next.js app, demo data in `localStorage`:
 
 | Folder | Look | Port | Tests |
 | --- | --- | --- | --- |
-| `Prototype_02/` | Main demo. Manager website at `/` (green sidebar, Today / Weekly pulse / week Calendar / Residents) **and** staff phone app at `/app` (department home, bottom tabs, month calendar). Same data. | 3001 | `Prototype_02/e2e/` (website) and `Prototype_02/e2e/phone/` (phone app) |
-| `Prototype_01/` | Old standalone copy of what is now the phone app. Only test it if someone changes it. | 3000 | `Prototype_01/e2e/` |
+| `Prototype_02/` | Manager website at `/` (green sidebar, Today / Weekly pulse / week Calendar / Residents) **and** staff phone app at `/app` (department home, bottom tabs, month calendar). Same data. | 3001 | `Prototype_02/e2e/` (website) and `Prototype_02/e2e/phone/` (phone app) |
 
-Below, `<app>` means the folder you are testing. Every change gets a test, and every run is the **whole** suite for that app, never only the new file.
+Below, `<app>` means `Prototype_02/`. Every change gets a test, and every run is the **whole** suite, never only the new file.
 
 ## Workflow
 
@@ -52,11 +51,11 @@ Read the changed pages/components and `<app>/lib/seed.ts` for the starting data 
 - `e2e/helpers.ts` also has `checkEveryBox(page)` (clean checklists) and `TINY_PNG` for `setInputFiles` photo/menu uploads.
 - Check `seed.ts` before picking a room. A check-in test needs a `vacant` room (103, 105, 111, 112). Housekeeping works on **clean jobs** (`cleanJobs`), not rooms: room 101 always has a routine clean today for `housekeeping@`; 104 has an unassigned deep clean; 102 and 109 are already mid-clean.
 - Form fields use `Field` in `components/ui.tsx`, so `getByLabel("Room")` etc. match the label text only.
-- Prototype 2 only:
+- Website and phone app:
   - Two sign-in helpers. `signInAs(page, email)` is the **website** and only works for managers (`baker@`, `director@`, `dining@`); it waits for "Today at a glance". `signInOnPhone(page, email)` is the **phone app** at `/app`, works for every job, and waits for "What do you need to do?". Staff emails on the website get "This website is for managers." Both share one login, so after `signInOnPhone` as staff, opening a website page shows the managers-only screen.
   - Phone app URLs are the website URLs with `/app` in front (`/app/housekeeping`, `/app/inbox`). Pulse and Residents are website only.
   - `dayKey(n)` in its helpers gives a local date key for `/calendar?day=...`.
-  - Buildings are `Building A/B/C` (Prototype 1: Main building, North building, Courtyard).
+  - Buildings are `Building A/B/C`.
   - The seed also builds 30 days of history (repairs, deep cleans, trays, attendance, room feedback), so Weekly pulse and Residents have data. Stories: room 107 has cold-food complaints, late trays and switched to trays; room 101 has an urgent unassigned leaking sink; room 110 attends less; room 106 moves out today; tomorrow dining is 1 short during a birthday lunch.
   - Today's "Problems to solve" shows the top 3; click "Show all N" to reach the rest.
   - Website desktop nav is in the sidebar (`getByRole("complementary")`); the website at phone width has a bottom `navigation` plus the "Menu" dialog. The phone app has a header (bell "Alerts, N unread", Sign out) and bottom tabs (Home plus the first four departments).
@@ -75,7 +74,7 @@ npm run lint
 
 ### 4. Run the full Playwright suite
 
-From `<app>/` (reuses that app's dev server — port 3000 or 3001 — if it is running, otherwise starts one):
+From `<app>/` (reuses the dev server on port 3001 if it is running, otherwise starts one):
 
 ```bash
 npx playwright test --reporter=list

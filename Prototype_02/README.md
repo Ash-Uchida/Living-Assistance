@@ -11,7 +11,7 @@ One app, two surfaces, same demo data (room numbers only, email sign-in, the job
 
 Staff emails (housekeepers, kitchen, nurse station, maintenance, activities) cannot sign in to the website; they are pointed to the phone app.
 
-**Staff phone app at `/app`**, for every job (the Prototype 1 experience): department home, bottom tabs, month Activities calendar, and the same Rooms, Housekeeping, Dining, Maintenance and Access screens. Managers can use it too, and get a "Manager website" link. It can be added to a phone home screen (`app/manifest.ts`).
+**Staff phone app at `/app`**, for every job: department home, bottom tabs, month Activities calendar, and the same Rooms, Housekeeping, Dining, Maintenance and Access screens. Managers can use it too, and get a "Manager website" link. It can be added to a phone home screen (`app/manifest.ts`).
 
 See `/ROADMAP.md` in the repo root.
 

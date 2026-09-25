@@ -238,7 +238,7 @@ The client wrote "resident" throughout. The app uses room numbers, never names. 
   - **Manager website** at `/`, for the operations manager, housekeeping director and dining manager. Layout from the design screenshots: Today (department cards and "Problems to solve"), Weekly pulse (bottlenecks against targets and resident feedback), a week Operations Calendar (risks and staffing counts), a Residents lens by room number, and every department screen. Staff emails are refused here and pointed to the phone app.
   - **Staff phone app** at `/app`, for every job: department home, bottom tabs, month Activities calendar, and the same department screens. Managers can use it too.
   - Data is fake and lives in the browser (`localStorage`). The seed includes 30 days of fake history so the pulse has numbers.
-- `Prototype_01/` (port 3000): the older standalone copy of what is now the phone app. Kept for reference only.
+- The older standalone phone prototype (`Prototype_01/`) was folded into `/app` and removed; it is still in git history (commit `dc6c254`).
 
 ### Screen map (`Prototype_02/`)
 
