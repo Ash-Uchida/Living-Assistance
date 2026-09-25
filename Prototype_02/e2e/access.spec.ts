@@ -11,7 +11,7 @@ test("an email that is not on the list cannot sign in", async ({ page }) => {
   await page.goto("/");
   await page.getByRole("button", { name: "Sign out" }).click();
 
-  await page.getByLabel("Work email").fill("stranger@example.com");
+  await page.getByLabel("Demo email").fill("stranger@example.com");
   await page.getByRole("button", { name: "Sign in", exact: true }).click();
   await expect(page).toHaveURL(/\/signin$/);
 });
@@ -58,7 +58,7 @@ test("the dining manager signs in to the website but does not see Access", async
 test("staff cannot sign in to the manager website", async ({ page }) => {
   await page.goto("/");
   await page.getByRole("button", { name: "Sign out" }).click();
-  await page.getByLabel("Work email").fill("kitchen@homestead.demo");
+  await page.getByLabel("Demo email").fill("kitchen@homestead.demo");
   await page.getByRole("button", { name: "Sign in", exact: true }).click();
   await expect(page.getByText("This website is for managers. Staff sign in on the phone app.")).toBeVisible();
   await expect(page).toHaveURL(/\/signin$/);

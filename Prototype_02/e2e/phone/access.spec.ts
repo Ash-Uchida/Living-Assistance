@@ -11,7 +11,7 @@ test("an email that is not on the list cannot sign in", async ({ page }) => {
   await page.goto("/app");
   await page.getByRole("button", { name: "Sign out" }).click();
 
-  await page.getByLabel("Work email").fill("stranger@example.com");
+  await page.getByLabel("Demo email").fill("stranger@example.com");
   await page.getByRole("button", { name: "Sign in", exact: true }).click();
   await expect(page).toHaveURL(/\/app\/signin$/);
 });

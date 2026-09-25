@@ -6,9 +6,12 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from "react";
 import { dateKey, isDateKey } from "./dates";
+import { createClient } from "./supabase/client";
+import { staffRoleFor, supabaseConfigured } from "./supabase/staff";
 import {
   DEFAULT_STAFF,
   DEPARTMENT_LEAD,
@@ -54,6 +57,7 @@ type Store = AppState & {
   myNotices: Notice[];
   unreadCount: number;
   signIn: (email: string) => string | null;
+  signInWithVerifiedEmail: (email: string, role: Role) => void;
   signOut: () => void;
   addEmployee: (email: string, role?: Role | null) => string | null;
   changeEmployeeRole: (id: string, role: Role | null) => string | null;
@@ -221,6 +225,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       return {
         ...prev,
         signedInEmail: account.email,
+        signedInWith: "demo",
         role: account.role,
         staffId: DEFAULT_STAFF[account.role],
       };
@@ -228,14 +233,59 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     return error;
   }, []);
 
+  /** After Supabase verified the emailed code. The job comes from the real staff list. */
+  const signInWithVerifiedEmail = useCallback((email: string, role: Role) => {
+    const normalized = normalizeEmail(email);
+    setState((prev) => ({
+      ...prev,
+      employees: prev.employees.some((e) => e.email === normalized)
+        ? prev.employees.map((e) => (e.email === normalized ? { ...e, role } : e))
+        : [...prev.employees, { id: newId("e"), email: normalized, role }],
+      signedInEmail: normalized,
+      signedInWith: "email",
+      role,
+      staffId: DEFAULT_STAFF[role],
+    }));
+  }, []);
+
+  const signedInWithEmail = state.signedInWith === "email";
   const signOut = useCallback(() => {
+    if (signedInWithEmail && supabaseConfigured()) void createClient().auth.signOut();
     setState((prev) => ({
       ...prev,
       signedInEmail: "",
+      signedInWith: undefined,
       role: "housekeeper",
       staffId: DEFAULT_STAFF.housekeeper,
     }));
-  }, []);
+  }, [signedInWithEmail]);
+
+  // On load, a real sign-in must still have a Supabase session, and its job may have changed on the Access page.
+  const sessionChecked = useRef(false);
+  useEffect(() => {
+    if (!ready || sessionChecked.current) return;
+    sessionChecked.current = true;
+    if (state.signedInWith !== "email" || !supabaseConfigured()) return;
+    const email = state.signedInEmail;
+    const supabase = createClient();
+    void (async () => {
+      const { data } = await supabase.auth.getSession();
+      let role: Role | null = null;
+      if (data.session?.user.email?.toLowerCase() === email) {
+        try {
+          role = await staffRoleFor(supabase, email);
+        } catch {
+          return; // Offline or a hiccup: keep the current sign-in rather than logging people out.
+        }
+      }
+      if (role) {
+        signInWithVerifiedEmail(email, role);
+      } else {
+        if (data.session) await supabase.auth.signOut();
+        setState((prev) => ({ ...prev, signedInEmail: "", signedInWith: undefined }));
+      }
+    })();
+  }, [ready, state.signedInWith, state.signedInEmail, signInWithVerifiedEmail]);
 
   const addEmployee = useCallback((email: string, role: Role | null = null) => {
     const normalized = normalizeEmail(email);
@@ -1158,6 +1208,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       myNotices,
       unreadCount,
       signIn,
+      signInWithVerifiedEmail,
       signOut,
       addEmployee,
       changeEmployeeRole,
@@ -1208,6 +1259,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       myNotices,
       unreadCount,
       signIn,
+      signInWithVerifiedEmail,
       signOut,
       addEmployee,
       changeEmployeeRole,

@@ -4,7 +4,7 @@ import type { Page } from "@playwright/test";
 export async function signInAs(page: Page, email: string) {
   await page.goto("/");
   await page.getByRole("button", { name: "Sign out" }).click();
-  await page.getByLabel("Work email").fill(email);
+  await page.getByLabel("Demo email").fill(email);
   await page.getByRole("button", { name: "Sign in", exact: true }).click();
   await page.getByRole("heading", { name: "Today at a glance" }).waitFor();
 }
@@ -13,7 +13,7 @@ export async function signInAs(page: Page, email: string) {
 export async function signInOnPhone(page: Page, email: string) {
   await page.goto("/app");
   await page.getByRole("button", { name: "Sign out" }).click();
-  await page.getByLabel("Work email").fill(email);
+  await page.getByLabel("Demo email").fill(email);
   await page.getByRole("button", { name: "Sign in", exact: true }).click();
   await page.getByRole("heading", { name: "What do you need to do?" }).waitFor();
 }

@@ -265,6 +265,8 @@ export type AppState = {
   role: Role;
   staffId: string;
   signedInEmail: string;
+  /** "email" = a real Supabase session (verified code); missing or "demo" = a demo account from the fake list. */
+  signedInWith?: "demo" | "email";
   employees: EmployeeAccount[];
   access: AccessMap;
   rooms: Room[];

@@ -6,6 +6,8 @@ import Link from "next/link";
 import { jobLabel, normalizeEmail } from "@/lib/seed";
 import { useStore } from "@/lib/store";
 import { canUseWebsite } from "@/lib/surface";
+import { supabaseConfigured } from "@/lib/supabase/staff";
+import { EmailCodeSignIn } from "@/components/email-code-sign-in";
 import { Field, PrimaryButton, inputClass } from "@/components/ui";
 
 export default function SignInPage() {
@@ -51,11 +53,18 @@ export default function SignInPage() {
         </p>
       </div>
 
+      {supabaseConfigured() ? <EmailCodeSignIn surface="website" /> : null}
+
+      <div className="space-y-1 pt-2">
+        <h2 className="text-sm font-semibold text-slate-900">Try the demo</h2>
+        <p className="text-xs text-slate-500">Fake building and fake data. No email needed.</p>
+      </div>
+
       <form
         onSubmit={submit}
         className="space-y-4 rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm"
       >
-        <Field label="Work email">
+        <Field label="Demo email">
           <input
             type="email"
             value={email}
